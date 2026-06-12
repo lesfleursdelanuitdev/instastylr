@@ -14,3 +14,8 @@ dist/
 # logs
 npm-debug.log*
 yarn-error.log*
+
+# playwright
+test-results/
+playwright-report/
+.playwright/
