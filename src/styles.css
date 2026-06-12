@@ -1,0 +1,385 @@
+:root {
+  --bg: #0f1115;
+  --panel: #181b22;
+  --panel-2: #1f232c;
+  --border: #2a2f3a;
+  --text: #e7e9ee;
+  --muted: #9aa3b2;
+  --accent: #6d8bff;
+  --radius: 12px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.layout-toggle {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  padding: 2px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.layout-toggle button {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.layout-toggle button.is-active {
+  background: var(--accent);
+  color: var(--text);
+}
+
+/* Desktop: user-chosen side-by-side or stacked. Mobile: always stacked. */
+.panes {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+  align-items: start;
+}
+
+.panes--side {
+  grid-template-columns: 1fr 1fr;
+}
+
+.panes--stack {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 720px) {
+  .panes--side,
+  .panes--stack {
+    grid-template-columns: 1fr;
+  }
+  .layout-toggle {
+    display: none;
+  }
+}
+
+.app-footer {
+  margin-top: 44px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.pane-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.pane-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.pane-head .pane-label {
+  margin-bottom: 0;
+}
+
+.char-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.is-over {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tb-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.tb-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tb-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tb-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.tb-font select {
+  height: 32px;
+  padding: 0 8px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tb-marker input,
+.tb-rule input,
+.tb-rule-len input {
+  height: 32px;
+  width: 3em;
+  text-align: center;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.tb-rule-len input {
+  width: 3.4em;
+}
+
+.tb-presets {
+  display: flex;
+  gap: 2px;
+}
+
+.tb-preset {
+  width: 26px;
+  height: 32px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tb-preset:hover {
+  border-color: var(--accent);
+}
+
+/* Emoji picker */
+.emoji-wrap {
+  position: relative;
+}
+
+.emoji-pop {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  z-index: 10;
+  width: 280px;
+  padding: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.emoji-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.emoji-tab {
+  flex: 1;
+  height: 30px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.emoji-tab.is-active {
+  background: var(--panel);
+  outline: 1px solid var(--border);
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.emoji-cell {
+  height: 30px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.emoji-cell:hover {
+  background: var(--panel);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.editor-shell,
+.output-shell {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.editor-input {
+  min-height: 220px;
+  padding: 14px 16px;
+  outline: none;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.editor-placeholder {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* Native bold/italic in the *input* are shown with real CSS; the Unicode
+   substitution only happens in the output. */
+.i-bold {
+  font-weight: 700;
+}
+.i-italic {
+  font-style: italic;
+}
+
+/* Lists in the *input* preview the chosen marker via the --ist-marker custom
+   property set by MarkedListNode. Output emits the same marker as plain text. */
+.i-ul,
+.i-ol {
+  margin: 0;
+  padding-left: 1.6em;
+}
+.i-ul {
+  list-style: none;
+}
+.i-ul > .i-li {
+  position: relative;
+}
+.i-ul > .i-li::before {
+  content: var(--ist-marker, "•");
+  position: absolute;
+  left: -1.2em;
+}
+.i-li {
+  margin: 2px 0;
+}
+
+.output-shell {
+  background: var(--panel-2);
+}
+
+.output-text {
+  min-height: 220px;
+  max-height: 600px;
+  padding: 14px 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  resize: vertical; /* resizable output box */
+}
+
+.output-empty {
+  color: var(--muted);
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.copy-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
