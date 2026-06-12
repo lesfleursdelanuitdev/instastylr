@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
-  $createParagraphNode,
-  $createTextNode,
-  $getRoot,
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_LOW,
   FORMAT_TEXT_COMMAND,
+  REDO_COMMAND,
   SELECTION_CHANGE_COMMAND,
+  UNDO_COMMAND,
 } from "lexical";
 import { $patchStyleText, $getSelectionStyleValueForProperty } from "@lexical/selection";
 import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
@@ -18,25 +17,59 @@ import {
   ListNode,
   REMOVE_LIST_COMMAND,
 } from "@lexical/list";
-import { FONTS, supportsBold, supportsItalic } from "../../fonts/mappings";
 import { FONT_STYLE_PROP, isKnownFont } from "../fontStyle";
-import { $isMarkedListNode, DEFAULT_BULLET } from "../nodes/MarkedListNode";
+import { UI_FONTS } from "../../fonts/uiFonts";
 import { EmojiPicker } from "./EmojiPicker";
 
-const MARKER_PRESETS = ["•", "◦", "▪", "‣", "→", "·", "–", "★"];
-const DEFAULT_RULE_CHAR = "━";
-
 type ListState = "bullet" | "number" | null;
+type Layout = "row" | "col";
 
-export function ToolbarPlugin() {
+const I = {
+  undo: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" /></svg>
+  ),
+  redo: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" /></svg>
+  ),
+  bold: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" /><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" /></svg>
+  ),
+  italic: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="4" x2="10" y2="4" /><line x1="14" y1="20" x2="5" y2="20" /><line x1="15" y1="4" x2="9" y2="20" /></svg>
+  ),
+  ul: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="9" y1="6" x2="20" y2="6" /><line x1="9" y1="12" x2="20" y2="12" /><line x1="9" y1="18" x2="20" y2="18" /><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" /></svg>
+  ),
+  ol: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" /><path d="M4 6h1v4" strokeWidth="1.8" /><path d="M4 10h2" strokeWidth="1.8" /><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" strokeWidth="1.8" /></svg>
+  ),
+  rows: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
+  ),
+  cols: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="18" rx="1.5" /><rect x="14" y="3" width="7" height="18" rx="1.5" /></svg>
+  ),
+  reset: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" /></svg>
+  ),
+};
+
+export function ToolbarPlugin({
+  layout,
+  onToggleLayout,
+  onReset,
+  onActiveFontChange,
+}: {
+  layout: Layout;
+  onToggleLayout: () => void;
+  onReset: () => void;
+  onActiveFontChange: (fontId: string) => void;
+}) {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
-  const [fontId, setActiveFontId] = useState("serif");
+  const [fontId, setFontId] = useState("serif");
   const [listType, setListType] = useState<ListState>(null);
-  const [bulletMarker, setBulletMarker] = useState(DEFAULT_BULLET);
-  const [ruleChar, setRuleChar] = useState(DEFAULT_RULE_CHAR);
-  const [ruleLen, setRuleLen] = useState(12);
 
   const readSelectionState = useCallback(() => {
     const selection = $getSelection();
@@ -45,16 +78,10 @@ export function ToolbarPlugin() {
     setIsItalic(selection.hasFormat("italic"));
 
     const raw = $getSelectionStyleValueForProperty(selection, FONT_STYLE_PROP, "serif");
-    setActiveFontId(isKnownFont(raw) ? raw : "serif");
+    setFontId(isKnownFont(raw) ? raw : "serif");
 
     const list = $getNearestNodeOfType(selection.anchor.getNode(), ListNode);
-    if (list) {
-      setListType(list.getListType() === "number" ? "number" : "bullet");
-      // Reflect the active list's own marker in the input.
-      if ($isMarkedListNode(list) && list.getListType() === "bullet") setBulletMarker(list.getMarker());
-    } else {
-      setListType(null);
-    }
+    setListType(list ? (list.getListType() === "number" ? "number" : "bullet") : null);
   }, []);
 
   useEffect(() => {
@@ -71,176 +98,120 @@ export function ToolbarPlugin() {
     );
   }, [editor, readSelectionState]);
 
+  useEffect(() => onActiveFontChange(fontId), [fontId, onActiveFontChange]);
+
   const applyFont = (nextFontId: string) => {
     editor.update(() => {
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
       $patchStyleText(selection, { [FONT_STYLE_PROP]: nextFontId === "serif" ? null : nextFontId });
     });
-    setActiveFontId(nextFontId);
+    setFontId(nextFontId);
     editor.focus();
   };
 
-  // Stamp a marker onto whichever bullet list the caret currently sits in.
-  const stampMarkerOnCurrentList = (marker: string) => {
-    editor.update(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const list = $getNearestNodeOfType(selection.anchor.getNode(), ListNode);
-      if (list && $isMarkedListNode(list) && list.getListType() === "bullet") list.setMarker(marker);
-    });
-  };
-
   const toggleBullet = () => {
-    if (listType === "bullet") {
-      editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
-    } else {
-      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-      stampMarkerOnCurrentList(bulletMarker); // new list adopts the chosen marker
-    }
+    editor.dispatchCommand(
+      listType === "bullet" ? REMOVE_LIST_COMMAND : INSERT_UNORDERED_LIST_COMMAND,
+      undefined,
+    );
     editor.focus();
   };
 
   const toggleNumber = () => {
-    if (listType === "number") editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
-    else editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+    editor.dispatchCommand(
+      listType === "number" ? REMOVE_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+      undefined,
+    );
     editor.focus();
   };
 
-  const changeMarker = (marker: string) => {
-    setBulletMarker(marker);
-    if (listType === "bullet") stampMarkerOnCurrentList(marker);
-    editor.focus();
-  };
-
-  const insertRule = () => {
-    const rule = (ruleChar || DEFAULT_RULE_CHAR).repeat(Math.max(1, ruleLen));
-    editor.update(() => {
-      const para = $createParagraphNode();
-      para.append($createTextNode(rule));
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.anchor.getNode().getTopLevelElementOrThrow().insertAfter(para);
-      } else {
-        $getRoot().append(para);
-      }
-      para.selectEnd();
-    });
-    editor.focus();
-  };
-
-  const canBold = supportsBold(fontId);
-  const canItalic = supportsItalic(fontId);
+  const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
 
   return (
-    <div className="toolbar" role="toolbar" aria-label="Formatting">
+    <div id="toolbar" role="toolbar" aria-label="Formatting">
+      <button className="tbtn" id="btn-undo" title="Undo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}>
+        {I.undo}
+      </button>
+      <button className="tbtn" id="btn-redo" title="Redo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}>
+        {I.redo}
+      </button>
+      <div className="sep" />
+
       <button
-        type="button"
-        className={`tb-btn${isBold && canBold ? " is-active" : ""}`}
-        aria-pressed={isBold && canBold}
-        disabled={!canBold}
-        title={canBold ? "Bold (Ctrl/Cmd+B)" : "This font has no bold variant"}
-        onMouseDown={(e) => e.preventDefault()}
+        className={`tbtn${isBold ? " active" : ""}`}
+        id="btn-bold"
+        title="Bold"
+        aria-pressed={isBold}
+        onMouseDown={noFocusSteal}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
       >
-        <strong>B</strong>
+        {I.bold}
       </button>
       <button
-        type="button"
-        className={`tb-btn${isItalic && canItalic ? " is-active" : ""}`}
-        aria-pressed={isItalic && canItalic}
-        disabled={!canItalic}
-        title={canItalic ? "Italic (Ctrl/Cmd+I)" : "This font has no italic variant"}
-        onMouseDown={(e) => e.preventDefault()}
+        className={`tbtn${isItalic ? " active" : ""}`}
+        id="btn-italic"
+        title="Italic"
+        aria-pressed={isItalic}
+        onMouseDown={noFocusSteal}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
       >
-        <em>I</em>
+        {I.italic}
       </button>
-
-      <span className="tb-sep" aria-hidden="true" />
-
-      <label className="tb-font">
-        <span className="sr-only">Font</span>
-        <select value={fontId} onChange={(e) => applyFont(e.target.value)} title="Apply font">
-          {FONTS.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <span className="tb-sep" aria-hidden="true" />
+      <div className="sep" />
 
       <button
-        type="button"
-        className={`tb-btn${listType === "bullet" ? " is-active" : ""}`}
-        aria-pressed={listType === "bullet"}
+        className={`tbtn${listType === "bullet" ? " active" : ""}`}
+        id="btn-ul"
         title="Bulleted list"
-        onMouseDown={(e) => e.preventDefault()}
+        aria-pressed={listType === "bullet"}
+        onMouseDown={noFocusSteal}
         onClick={toggleBullet}
       >
-        ☰
+        {I.ul}
       </button>
       <button
-        type="button"
-        className={`tb-btn${listType === "number" ? " is-active" : ""}`}
-        aria-pressed={listType === "number"}
+        className={`tbtn${listType === "number" ? " active" : ""}`}
+        id="btn-ol"
         title="Numbered list"
-        onMouseDown={(e) => e.preventDefault()}
+        aria-pressed={listType === "number"}
+        onMouseDown={noFocusSteal}
         onClick={toggleNumber}
       >
-        1.
+        {I.ol}
       </button>
+      <div className="sep" />
 
-      <label className="tb-marker" title="Bullet marker">
-        <span className="sr-only">Bullet marker</span>
-        <input
-          value={bulletMarker}
-          onChange={(e) => changeMarker(e.target.value)}
-          maxLength={4}
-          aria-label="Bullet marker"
-        />
-      </label>
-      <div className="tb-presets">
-        {MARKER_PRESETS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            className="tb-preset"
-            title={`Use ${m}`}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => changeMarker(m)}
-          >
-            {m}
-          </button>
+      <select
+        id="font-select"
+        title="Font style"
+        value={fontId}
+        onChange={(e) => applyFont(e.target.value)}
+      >
+        {UI_FONTS.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.select}
+          </option>
         ))}
-      </div>
-
-      <span className="tb-sep" aria-hidden="true" />
-
-      <label className="tb-rule" title="Horizontal rule character">
-        <span className="sr-only">Rule character</span>
-        <input value={ruleChar} onChange={(e) => setRuleChar(e.target.value)} maxLength={4} aria-label="Rule character" />
-      </label>
-      <label className="tb-rule-len" title="Rule length">
-        <span className="sr-only">Rule length</span>
-        <input
-          type="number"
-          min={1}
-          max={80}
-          value={ruleLen}
-          onChange={(e) => setRuleLen(Number(e.target.value) || 1)}
-          aria-label="Rule length"
-        />
-      </label>
-      <button type="button" className="tb-btn" title="Insert horizontal rule" onClick={insertRule}>
-        ―
-      </button>
-
-      <span className="tb-sep" aria-hidden="true" />
+      </select>
 
       <EmojiPicker />
+
+      <div id="toolbar-right">
+        <div className="sep" />
+        <button
+          className={`tbtn${layout === "col" ? " active" : ""}`}
+          id="btn-layout"
+          title={layout === "col" ? "Switch to row layout" : "Switch to column layout"}
+          onClick={onToggleLayout}
+        >
+          {layout === "col" ? I.cols : I.rows}
+        </button>
+        <div className="sep" />
+        <button className="tbtn" id="btn-reset" title="Reset to start" onClick={onReset}>
+          {I.reset}
+        </button>
+      </div>
     </div>
   );
 }

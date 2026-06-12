@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $populateDefaultTemplate } from "../template";
+import { isValidEditorStateJson } from "../../saves";
 
 const STORAGE_KEY = "instastylr.draft.v1";
 const SAVE_DEBOUNCE_MS = 600;
@@ -8,8 +8,8 @@ const SAVE_DEBOUNCE_MS = 600;
 /**
  * Drafts persist between browser sessions via localStorage. We store the
  * serialized Lexical editor state (lossless) — never the output string, which
- * isn't round-trippable. On first run (no saved draft) we seed the default
- * template instead.
+ * isn't round-trippable. On first run (no saved draft) the editor stays empty so
+ * the placeholder and welcome modal show; templates are offered there instead.
  */
 export function PersistencePlugin() {
   const [editor] = useLexicalComposerContext();
@@ -28,15 +28,13 @@ export function PersistencePlugin() {
       saved = null; // storage unavailable (private mode, etc.)
     }
 
-    if (saved) {
+    if (saved && isValidEditorStateJson(saved)) {
       try {
         editor.setEditorState(editor.parseEditorState(saved));
-        return;
       } catch {
-        // Corrupt draft — fall through to the template.
+        // Corrupt draft — leave the editor empty.
       }
     }
-    editor.update(() => $populateDefaultTemplate());
   }, [editor]);
 
   // Debounced autosave on every change.

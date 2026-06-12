@@ -32,3 +32,24 @@ export function $populateDefaultTemplate(): void {
 
   root.append(headline, body, list, tags);
 }
+
+/** A bullet list item whose label is bold ("Camera: ", etc.). */
+function boldLabelItem(label: string) {
+  const li = $createListItemNode();
+  const t = $createTextNode(label);
+  t.toggleFormat("bold");
+  li.append(t);
+  return li;
+}
+
+/**
+ * The "📸 Photo Caption Template" offered in the welcome modal and seeded into
+ * the saves list. Mirrors the reference's Camera / Lens / Settings checklist.
+ */
+export function $populatePhotoCaptionTemplate(): void {
+  const root = $getRoot();
+  root.clear();
+  const list = $createListNode("bullet");
+  list.append(boldLabelItem("Camera: "), boldLabelItem("Lens: "), boldLabelItem("Settings: "));
+  root.append(list);
+}

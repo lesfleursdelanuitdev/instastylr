@@ -12,6 +12,7 @@ export function EmojiPicker() {
   const [editor] = useLexicalComposerContext();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState(0);
+  const [flipLeft, setFlipLeft] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click / Escape.
@@ -31,6 +32,17 @@ export function EmojiPicker() {
     };
   }, [open]);
 
+  const toggleOpen = () => {
+    setOpen((v) => {
+      const next = !v;
+      if (next && rootRef.current) {
+        const rect = rootRef.current.getBoundingClientRect();
+        setFlipLeft(rect.left + 300 > window.innerWidth - 12);
+      }
+      return next;
+    });
+  };
+
   const insertEmoji = (emoji: string) => {
     editor.update(() => {
       let selection = $getSelection();
@@ -44,50 +56,67 @@ export function EmojiPicker() {
   };
 
   return (
-    <div className="emoji-wrap" ref={rootRef}>
-      <button
-        type="button"
-        className={`tb-btn${open ? " is-active" : ""}`}
-        title="Insert emoji"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setOpen((v) => !v)}
+    <div
+      id="btn-emoji"
+      className={`tbtn${open ? " active" : ""}`}
+      ref={rootRef}
+      title="Insert emoji"
+      role="button"
+      tabIndex={0}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={toggleOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleOpen();
+        }
+      }}
+    >
+      <span style={{ fontSize: 15, lineHeight: 1 }}>😊</span>
+      <div
+        id="emoji-picker"
+        className={`${open ? "open" : ""}${flipLeft ? " flip-left" : ""}`}
+        role="dialog"
+        aria-label="Emoji picker"
+        onClick={(e) => e.stopPropagation()}
       >
-        😊
-      </button>
-
-      {open && (
-        <div className="emoji-pop" role="dialog" aria-label="Emoji picker">
-          <div className="emoji-tabs">
-            {EMOJI_CATEGORIES.map((c, i) => (
-              <button
-                key={c.name}
-                type="button"
-                className={`emoji-tab${i === category ? " is-active" : ""}`}
-                title={c.name}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setCategory(i)}
-              >
-                {c.icon}
-              </button>
-            ))}
-          </div>
-          <div className="emoji-grid">
-            {EMOJI_CATEGORIES[category].emojis.map((emoji, i) => (
-              <button
-                key={`${emoji}-${i}`}
-                type="button"
-                className="emoji-cell"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insertEmoji(emoji)}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
+        <div id="emoji-tabs">
+          {EMOJI_CATEGORIES.map((c, i) => (
+            <button
+              key={c.name}
+              type="button"
+              className={`emoji-tab${i === category ? " active" : ""}`}
+              title={c.name}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCategory(i);
+              }}
+            >
+              {c.icon}
+            </button>
+          ))}
         </div>
-      )}
+        <div id="emoji-grid">
+          {EMOJI_CATEGORIES[category].emojis.map((emoji, i) => (
+            <button
+              key={`${emoji}-${i}`}
+              type="button"
+              className="emoji-btn"
+              title={emoji}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                insertEmoji(emoji);
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
