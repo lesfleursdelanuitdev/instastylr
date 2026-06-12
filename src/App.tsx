@@ -5,6 +5,7 @@ import { ListNode, ListItemNode } from "@lexical/list";
 import { Editor } from "./editor/Editor";
 import { OutputBox } from "./ui/OutputBox";
 import { LayoutToggle, type Layout } from "./ui/LayoutToggle";
+import { ToolbarPlugin } from "./editor/plugins/ToolbarPlugin";
 import { MarkedListNode } from "./editor/nodes/MarkedListNode";
 
 // Font lives in each TextNode's style (see fontStyle.ts), so no custom *text*
@@ -60,11 +61,14 @@ export function App() {
       <div className="app">
         <header className="app-header">
           <div className="app-title">
-            <h1>Instastylr</h1>
+            <h1>
+              <span className="brand-accent">i</span>nstastylr
+            </h1>
             <p className="tagline">Format captions for platforms that don’t allow formatting.</p>
           </div>
           <LayoutToggle value={layout} onChange={setLayout} />
         </header>
+        <ToolbarPlugin />
         <main className={`panes panes--${layout}`}>
           <Editor onOutputChange={setOutput} />
           <OutputBox value={output} />

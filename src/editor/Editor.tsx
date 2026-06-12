@@ -6,7 +6,6 @@ import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import type { EditorState } from "lexical";
 import { editorStateToOutput } from "./serialize";
-import { ToolbarPlugin } from "./plugins/ToolbarPlugin";
 import { PersistencePlugin } from "./plugins/PersistencePlugin";
 
 /** The input box: where the user composes. Lexical owns the editing state. */
@@ -16,7 +15,6 @@ export function Editor({ onOutputChange }: { onOutputChange: (output: string) =>
   return (
     <section className="pane input-pane">
       <div className="pane-label">Compose</div>
-      <ToolbarPlugin />
       <div className="editor-shell">
         <RichTextPlugin
           contentEditable={<ContentEditable className="editor-input" aria-label="Caption editor" />}
