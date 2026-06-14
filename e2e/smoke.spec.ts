@@ -1,61 +1,130 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
  * Real-browser smoke test: drives the actual app in Chromium to confirm the
- * editor → projection → output loop works end-to-end (not just in headless
- * unit tests). Clears the seeded template, then exercises typing + toolbar.
+ * editor → projection → output loop and the document state machine work
+ * end-to-end (not just in headless unit tests).
+ *
+ * Each test gets a fresh browser context, so localStorage is empty: the editor
+ * starts blank, the draft is unsaved, and the first-run welcome modal shows.
+ * `start()` dismisses the modal and returns the focused editor.
  */
-
-async function clearEditor(page: import("@playwright/test").Page) {
-  const editor = page.locator(".editor-input");
+async function start(page: Page) {
+  await page.goto("/");
+  await expect(page.locator("#brand")).toContainText("instastylr");
+  // First-run welcome modal — dismiss it before touching the editor.
+  await page.locator("#btn-welcome-skip").click({ timeout: 5000 }).catch(() => {});
+  const editor = page.locator(".editor");
   await editor.click();
-  // Wait for the first-run template to finish seeding before we clear, so we
-  // don't race the populate effect.
-  await expect(editor).toContainText("Your headline");
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.press("Delete");
   return editor;
 }
 
-test("loads and projects the default template", async ({ page }) => {
+test("loads blank with the welcome modal and an empty projection", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Instastylr" })).toBeVisible();
+  await expect(page.locator("#brand")).toContainText("instastylr");
+  await expect(page.locator("#welcome-modal")).toBeVisible();
 
-  const output = page.locator(".output-text");
-  await expect(output).toContainText("𝐘𝐨𝐮𝐫 𝐡𝐞𝐚𝐝𝐥𝐢𝐧𝐞 𝐡𝐞𝐫𝐞"); // bold headline
-  await expect(output).toContainText("• 📍 Location"); // bullet emitted as Unicode
-  await expect(page.locator(".char-count")).toContainText("/ 2,200");
+  await page.locator("#btn-welcome-skip").click();
+  await expect(page.locator("#welcome-modal")).toBeHidden();
+
+  await expect(page.locator("#output-body")).toContainText("Your styled text will appear here");
+  await expect(page.locator("#ig-stat")).toContainText("2,200 left for IG");
+  await expect(page.locator("#doc-title .doc-name")).toHaveText("Untitled");
 });
 
-test("typing + Bold yields substituted Unicode in the output", async ({ page }) => {
-  await page.goto("/");
-  const editor = await clearEditor(page);
+test("typing projects into the output and updates the counters", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("hello world");
 
+  await expect(page.locator("#output-body")).toContainText("hello world");
+  await expect(page.locator("#char-stat")).toContainText("11 chars");
+});
+
+test("Bold yields substituted Unicode in the output", async ({ page }) => {
+  const editor = await start(page);
   await editor.pressSequentially("hello");
   await page.keyboard.press("ControlOrMeta+A");
-  await page.locator('button[title^="Bold"]').click();
+  await page.locator("#btn-bold").click();
 
-  await expect(page.locator(".output-text")).toHaveText("𝐡𝐞𝐥𝐥𝐨");
+  await expect(page.locator("#output-body")).toHaveText("𝐡𝐞𝐥𝐥𝐨");
 });
 
 test("font dropdown restyles the selection", async ({ page }) => {
-  await page.goto("/");
-  const editor = await clearEditor(page);
-
+  const editor = await start(page);
   await editor.pressSequentially("Hello");
   await page.keyboard.press("ControlOrMeta+A");
-  await page.locator(".tb-font select").selectOption("sans");
+  await page.locator("#font-select").selectOption("sans");
 
-  await expect(page.locator(".output-text")).toHaveText("𝖧𝖾𝗅𝗅𝗈");
+  await expect(page.locator("#output-body")).toHaveText("𝖧𝖾𝗅𝗅𝗈");
+});
+
+test("a font with no bold variant disables Bold and shows a strip advisory", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("hello");
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.locator("#btn-bold").click(); // bold serif
+
+  await page.locator("#font-select").selectOption("mono");
+
+  // Bold can't be expressed in Monospace → button disabled, the bit was stripped,
+  // and a suppressible advisory toast explains why.
+  await expect(page.locator("#btn-bold")).toBeDisabled();
+  await expect(page.locator("#toast-msg")).toContainText("Monospace");
+  await expect(page.locator("#toast-action")).toHaveText("Don’t show again");
 });
 
 test("copy button reports success", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/");
-  await clearEditor(page);
-  await page.locator(".editor-input").pressSequentially("hi");
+  const editor = await start(page);
+  await editor.pressSequentially("hi");
 
-  const copyBtn = page.getByRole("button", { name: "Copy" });
-  await copyBtn.click();
-  await expect(page.getByRole("button", { name: "Copied ✓" })).toBeVisible();
+  await page.locator("#copy-btn").click();
+  await expect(page.locator("#copy-text")).toHaveText("Copied!");
+});
+
+test("save binds an identity, then edits offer Update", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("trip caption");
+
+  // Untitled draft → header Save is enabled and opens the saves panel to name it.
+  const saveBtn = page.locator("#btn-save-hdr");
+  await expect(saveBtn).toBeEnabled();
+  await expect(saveBtn).toContainText("Save");
+  await saveBtn.click();
+
+  await page.locator("#save-name-input").fill("My Trip");
+  await page.locator("#btn-do-save").click();
+
+  // Bound now: title shows the name and Save collapses to a disabled "Saved".
+  await expect(page.locator("#doc-title .doc-name")).toHaveText("My Trip");
+  await page.locator("#btn-close-panel").click();
+  await expect(saveBtn).toContainText("Saved");
+  await expect(saveBtn).toBeDisabled();
+
+  // Edit → dirty → control becomes "Update"; clicking it commits in place.
+  await editor.click();
+  await page.keyboard.press("End");
+  await page.keyboard.type("!");
+  await expect(saveBtn).toContainText("Update");
+  await saveBtn.click();
+  await expect(page.locator("#toast-msg")).toContainText('Updated "My Trip"');
+});
+
+test("reset on an unsaved draft asks for confirmation", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("draft text");
+
+  await page.locator("#btn-reset").click();
+  await expect(page.locator(".confirm-box")).toBeVisible();
+  await expect(page.locator(".confirm-title")).toHaveText("Start fresh?");
+
+  // Cancel keeps the draft…
+  await page.locator(".confirm-cancel").click();
+  await expect(page.locator(".confirm-box")).toBeHidden();
+  await expect(page.locator("#output-body")).toContainText("draft text");
+
+  // …confirming clears it.
+  await page.locator("#btn-reset").click();
+  await page.locator(".confirm-ok").click();
+  await expect(page.locator("#output-body")).toContainText("Your styled text will appear here");
 });

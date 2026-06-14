@@ -3,10 +3,12 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import {
   $getSelection,
   $isRangeSelection,
+  $isTextNode,
   COMMAND_PRIORITY_LOW,
   FORMAT_TEXT_COMMAND,
   REDO_COMMAND,
   SELECTION_CHANGE_COMMAND,
+  type TextFormatType,
   UNDO_COMMAND,
 } from "lexical";
 import { $patchStyleText, $getSelectionStyleValueForProperty } from "@lexical/selection";
@@ -17,12 +19,24 @@ import {
   ListNode,
   REMOVE_LIST_COMMAND,
 } from "@lexical/list";
-import { FONT_STYLE_PROP, isKnownFont } from "../fontStyle";
+import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
+import { supportsBold, supportsItalic } from "../../fonts/mappings";
 import { UI_FONTS } from "../../fonts/uiFonts";
 import { EmojiPicker } from "./EmojiPicker";
 
 type ListState = "bullet" | "number" | null;
 type Layout = "row" | "col";
+
+/** A format axis (bold/italic) across the selection: all / none / some. */
+type Tri = "on" | "off" | "mixed";
+const MIXED_FONT = ""; // sentinel: selection spans more than one font
+
+/** Reduce a format bit across selected text nodes to a tri-state value. */
+function triState(nodes: { hasFormat: (f: TextFormatType) => boolean }[], fmt: TextFormatType): Tri {
+  let on = 0;
+  for (const n of nodes) if (n.hasFormat(fmt)) on++;
+  return on === 0 ? "off" : on === nodes.length ? "on" : "mixed";
+}
 
 const I = {
   undo: (
@@ -59,26 +73,51 @@ export function ToolbarPlugin({
   onToggleLayout,
   onReset,
   onActiveFontChange,
+  onStripFormats,
 }: {
   layout: Layout;
   onToggleLayout: () => void;
   onReset: () => void;
   onActiveFontChange: (fontId: string) => void;
+  /** Fired when a font change drops bold/italic the new font can't render. */
+  onStripFormats: (fontId: string, bold: boolean, italic: boolean) => void;
 }) {
   const [editor] = useLexicalComposerContext();
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
+  const [bold, setBold] = useState<Tri>("off");
+  const [italic, setItalic] = useState<Tri>("off");
+  const [boldAvail, setBoldAvail] = useState(true);
+  const [italicAvail, setItalicAvail] = useState(true);
   const [fontId, setFontId] = useState("serif");
   const [listType, setListType] = useState<ListState>(null);
 
   const readSelectionState = useCallback(() => {
     const selection = $getSelection();
     if (!$isRangeSelection(selection)) return;
-    setIsBold(selection.hasFormat("bold"));
-    setIsItalic(selection.hasFormat("italic"));
 
-    const raw = $getSelectionStyleValueForProperty(selection, FONT_STYLE_PROP, "serif");
-    setFontId(isKnownFont(raw) ? raw : "serif");
+    const textNodes = selection.getNodes().filter($isTextNode);
+    const collapsed = selection.isCollapsed() || textNodes.length === 0;
+
+    // Fonts covered by the selection. Collapsed/empty → the caret's pending font.
+    let fonts: string[];
+    if (collapsed) {
+      const raw = $getSelectionStyleValueForProperty(selection, FONT_STYLE_PROP, "serif");
+      fonts = [isKnownFont(raw) ? raw : "serif"];
+    } else {
+      fonts = textNodes.map((n) => fontIdFromStyle(n.getStyle()));
+    }
+    const fontSet = new Set(fonts);
+    setFontId(fontSet.size === 1 ? (fonts[0] as string) : MIXED_FONT);
+
+    // Availability is gated by the whole selection: disable if ANY covered font
+    // can't express the style (a single toggle couldn't produce a uniform result).
+    setBoldAvail(fonts.every(supportsBold));
+    setItalicAvail(fonts.every(supportsItalic));
+
+    // Value is tri-state: collapsed uses the pending bit, ranges reduce per node.
+    setBold(collapsed ? (selection.hasFormat("bold") ? "on" : "off") : triState(textNodes, "bold"));
+    setItalic(
+      collapsed ? (selection.hasFormat("italic") ? "on" : "off") : triState(textNodes, "italic"),
+    );
 
     const list = $getNearestNodeOfType(selection.anchor.getNode(), ListNode);
     setListType(list ? (list.getListType() === "number" ? "number" : "bullet") : null);
@@ -101,13 +140,41 @@ export function ToolbarPlugin({
   useEffect(() => onActiveFontChange(fontId), [fontId, onActiveFontChange]);
 
   const applyFont = (nextFontId: string) => {
+    const stripBold = !supportsBold(nextFontId);
+    const stripItalic = !supportsItalic(nextFontId);
+    let strippedBold = false;
+    let strippedItalic = false;
+
     editor.update(() => {
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
       $patchStyleText(selection, { [FONT_STYLE_PROP]: nextFontId === "serif" ? null : nextFontId });
+
+      // The new font can't render bold/italic → force those bits off (decision:
+      // strip, not keep-latent) so the toolbar never claims an inert style.
+      const collapsed = selection.isCollapsed();
+      const clear = (fmt: TextFormatType): boolean => {
+        if (collapsed) {
+          if (!selection.hasFormat(fmt)) return false;
+          selection.toggleFormat(fmt); // clear the pending bit for next-typed chars
+          return true;
+        }
+        const nodes = selection.getNodes().filter($isTextNode); // post-split, exactly the range
+        let had = false;
+        for (const n of nodes)
+          if (n.hasFormat(fmt)) {
+            had = true;
+            n.toggleFormat(fmt);
+          }
+        return had;
+      };
+      if (stripBold) strippedBold = clear("bold");
+      if (stripItalic) strippedItalic = clear("italic");
     });
+
     setFontId(nextFontId);
     editor.focus();
+    if (strippedBold || strippedItalic) onStripFormats(nextFontId, strippedBold, strippedItalic);
   };
 
   const toggleBullet = () => {
@@ -139,20 +206,22 @@ export function ToolbarPlugin({
       <div className="sep" />
 
       <button
-        className={`tbtn${isBold ? " active" : ""}`}
+        className={`tbtn${bold === "on" ? " active" : ""}${bold === "mixed" ? " mixed" : ""}`}
         id="btn-bold"
-        title="Bold"
-        aria-pressed={isBold}
+        title={boldAvail ? "Bold" : "Bold isn’t available in this font"}
+        aria-pressed={bold === "on" ? true : bold === "mixed" ? "mixed" : false}
+        disabled={!boldAvail}
         onMouseDown={noFocusSteal}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
       >
         {I.bold}
       </button>
       <button
-        className={`tbtn${isItalic ? " active" : ""}`}
+        className={`tbtn${italic === "on" ? " active" : ""}${italic === "mixed" ? " mixed" : ""}`}
         id="btn-italic"
-        title="Italic"
-        aria-pressed={isItalic}
+        title={italicAvail ? "Italic" : "Italic isn’t available in this font"}
+        aria-pressed={italic === "on" ? true : italic === "mixed" ? "mixed" : false}
+        disabled={!italicAvail}
         onMouseDown={noFocusSteal}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
       >
@@ -185,9 +254,15 @@ export function ToolbarPlugin({
       <select
         id="font-select"
         title="Font style"
-        value={fontId}
+        className={fontId === MIXED_FONT ? "mixed" : ""}
+        value={fontId === MIXED_FONT ? "__mixed" : fontId}
         onChange={(e) => applyFont(e.target.value)}
       >
+        {fontId === MIXED_FONT && (
+          <option value="__mixed" disabled>
+            Mixed
+          </option>
+        )}
         {UI_FONTS.map((f) => (
           <option key={f.id} value={f.id}>
             {f.select}
