@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TIP_CLASSES, type TipClassId, loadDismissed, reenableTip, dismissTip, resetTips } from "../tips";
+import { PLATFORMS, type PlatformId, platformById } from "../platforms";
 
 const CloseIcon = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -21,6 +22,8 @@ export function SettingsPanel({
   onTheme,
   layout,
   onLayout,
+  platform,
+  onPlatform,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,6 +31,8 @@ export function SettingsPanel({
   onTheme: (t: Theme) => void;
   layout: Layout;
   onLayout: (l: Layout) => void;
+  platform: PlatformId;
+  onPlatform: (p: PlatformId) => void;
 }) {
   const [render, setRender] = useState(open);
   const [shown, setShown] = useState(false);
@@ -95,6 +100,35 @@ export function SettingsPanel({
                   Column
                 </button>
               </div>
+            </div>
+          </section>
+
+          <section className="settings-group">
+            <div className="settings-group-title">Word count</div>
+            <div className="settings-row">
+              <span className="settings-label">
+                Platform
+                <span className="tip-blurb">
+                  Character limit the footer counts down against
+                </span>
+              </span>
+              <select
+                className="settings-select"
+                value={platform}
+                onChange={(e) => onPlatform(e.target.value as PlatformId)}
+              >
+                {PLATFORMS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="settings-row">
+              <span className="settings-label">Limit</span>
+              <span className="settings-value">
+                {platformById(platform).limit.toLocaleString()} characters
+              </span>
             </div>
           </section>
 

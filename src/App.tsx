@@ -9,7 +9,8 @@ import { ToolbarPlugin } from "./editor/plugins/ToolbarPlugin";
 import { MarkedListNode } from "./editor/nodes/MarkedListNode";
 import { editorStateToOutput } from "./editor/serialize";
 import { $populatePhotoCaptionTemplate } from "./editor/template";
-import { instagramCount, IG_CAPTION_LIMIT } from "./count";
+import { instagramCount } from "./count";
+import { type PlatformId, PLATFORM_IDS, DEFAULT_PLATFORM, platformById, warnThreshold } from "./platforms";
 import { fontLabel } from "./fonts/uiFonts";
 import {
   loadSaves,
@@ -56,6 +57,7 @@ type Layout = "row" | "col";
 
 const THEME_KEY = "instastylr.theme.v1";
 const LAYOUT_KEY = "instastylr.layout.v2";
+const PLATFORM_KEY = "instastylr.platform.v1";
 const WELCOMED_KEY = "instastylr.welcomed.v1";
 
 function readStored<T extends string>(key: string, allowed: T[], fallback: T): T {
@@ -89,6 +91,9 @@ function AppInner() {
   // ── Shell state ─────────────────────────────────────────
   const [theme, setTheme] = useState<Theme>(() => readStored(THEME_KEY, ["light", "dark"], "light"));
   const [layout, setLayout] = useState<Layout>(() => readStored(LAYOUT_KEY, ["row", "col"], "row"));
+  const [platform, setPlatform] = useState<PlatformId>(() =>
+    readStored(PLATFORM_KEY, PLATFORM_IDS, DEFAULT_PLATFORM),
+  );
   const [outputOpen, setOutputOpen] = useState(true);
   const [outputHeight, setOutputHeight] = useState(220);
   const [editorWidthPct, setEditorWidthPct] = useState(55);
@@ -189,6 +194,14 @@ function AppInner() {
       // ignore
     }
   }, [layout]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PLATFORM_KEY, platform);
+    } catch {
+      // ignore
+    }
+  }, [platform]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("panel-collapsed", layout === "col" && !outputOpen);
@@ -446,12 +459,13 @@ function AppInner() {
   };
 
   // ── Derived display values ──────────────────────────────
-  const igLeft = IG_CAPTION_LIMIT - chars;
-  const igClass = igLeft < 0 ? "over" : igLeft <= 300 ? "warn" : "ok";
+  const activePlatform = platformById(platform);
+  const igLeft = activePlatform.limit - chars;
+  const igClass = igLeft < 0 ? "over" : igLeft <= warnThreshold(activePlatform.limit) ? "warn" : "ok";
   const igText =
     igLeft < 0
-      ? `${Math.abs(igLeft).toLocaleString()} over IG limit`
-      : `${igLeft.toLocaleString()} left for IG`;
+      ? `${Math.abs(igLeft).toLocaleString()} over ${activePlatform.short} limit`
+      : `${igLeft.toLocaleString()} left for ${activePlatform.short}`;
 
   const chevronTransform =
     layout === "col"
@@ -648,6 +662,8 @@ function AppInner() {
         onTheme={setTheme}
         layout={layout}
         onLayout={setLayout}
+        platform={platform}
+        onPlatform={setPlatform}
       />
       <SideMenu
         open={menuOpen}

@@ -22,7 +22,7 @@ import {
 import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
 import { UI_FONTS } from "../../fonts/uiFonts";
-import { EmojiPicker } from "./EmojiPicker";
+import { MoreMenu } from "./MoreMenu";
 
 type ListState = "bullet" | "number" | null;
 type Layout = "row" | "col";
@@ -229,28 +229,6 @@ export function ToolbarPlugin({
       </button>
       <div className="sep" />
 
-      <button
-        className={`tbtn${listType === "bullet" ? " active" : ""}`}
-        id="btn-ul"
-        title="Bulleted list"
-        aria-pressed={listType === "bullet"}
-        onMouseDown={noFocusSteal}
-        onClick={toggleBullet}
-      >
-        {I.ul}
-      </button>
-      <button
-        className={`tbtn${listType === "number" ? " active" : ""}`}
-        id="btn-ol"
-        title="Numbered list"
-        aria-pressed={listType === "number"}
-        onMouseDown={noFocusSteal}
-        onClick={toggleNumber}
-      >
-        {I.ol}
-      </button>
-      <div className="sep" />
-
       <select
         id="font-select"
         title="Font style"
@@ -270,7 +248,13 @@ export function ToolbarPlugin({
         ))}
       </select>
 
-      <EmojiPicker />
+      <MoreMenu
+        listType={listType}
+        ulIcon={I.ul}
+        olIcon={I.ol}
+        onToggleBullet={toggleBullet}
+        onToggleNumber={toggleNumber}
+      />
 
       <div id="toolbar-right">
         <div className="sep" />

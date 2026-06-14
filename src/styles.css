@@ -222,6 +222,25 @@ body {
 }
 .emoji-btn:hover { background: var(--tbtn-hover); }
 
+/* More menu (folds lists + emoji behind a ⋯ button) */
+#btn-more-wrap { position: relative; display: flex; align-items: center; }
+#more-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--out-hdr-bg);
+  border: 1px solid var(--sep-clr);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  z-index: 49;
+  padding: 5px;
+  gap: 3px;
+  align-items: center;
+  transition: background 0.2s;
+}
+#more-menu.open { display: flex; }
+
 /* ── Saves panel (off-canvas, slides in from right) ── */
 #saves-overlay {
   display: none;
@@ -435,6 +454,53 @@ body {
 .i-ul > .i-li { position: relative; }
 .i-ul > .i-li::before { content: var(--ist-marker, "•"); position: absolute; left: -1.2em; }
 .i-ol { list-style: decimal; }
+
+/* ── Bullet picker: a handle anchored to the left gutter of a bulleted list ── */
+#bullet-handle { position: absolute; left: 2px; z-index: 15; }
+.bullet-handle-btn {
+  width: 20px; height: 27px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+  color: var(--ph-clr); cursor: pointer; font-size: 15px; line-height: 1;
+  opacity: 0.4; -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.12s, background 0.12s, border-color 0.12s, color 0.12s;
+}
+#editor-wrap:hover .bullet-handle-btn, .bullet-handle-btn:hover, .bullet-handle-btn.active { opacity: 1; }
+.bullet-handle-btn:hover { background: rgba(99,102,241,0.12); color: var(--editor-text); border-color: rgba(99,102,241,0.4); }
+.bullet-handle-btn.active { background: #4F46E5; color: #fff; border-color: #4F46E5; }
+.bullet-handle-glyph { pointer-events: none; }
+
+/* Picker popover (fixed-positioned to escape #editor-wrap's overflow clipping) */
+#bullet-menu {
+  position: fixed; z-index: 60; width: 200px;
+  background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
+  border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 10px;
+}
+.bullet-menu-title {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: #94A3B8; margin-bottom: 8px;
+}
+.bullet-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.bullet-swatch {
+  height: 28px; display: flex; align-items: center; justify-content: center;
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 6px;
+  color: #E2E8F0; cursor: pointer; font-size: 15px; line-height: 1;
+  transition: background 0.1s, border-color 0.1s;
+}
+.bullet-swatch:hover { border-color: #4F46E5; }
+.bullet-swatch.active { background: #4F46E5; color: #fff; border-color: #4F46E5; }
+.bullet-custom { display: flex; gap: 6px; margin-top: 9px; }
+.bullet-custom input {
+  flex: 1; min-width: 0; background: var(--sel-bg); border: 1px solid var(--sel-border);
+  border-radius: 6px; padding: 5px 8px; color: #E2E8F0; font-size: 13px; font-family: inherit; outline: none;
+}
+.bullet-custom input::placeholder { color: #94A3B8; }
+.bullet-custom input:focus { border-color: #4F46E5; }
+.bullet-custom-apply {
+  background: #4F46E5; color: #fff; border: none; border-radius: 6px;
+  padding: 5px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+  transition: opacity 0.12s;
+}
+.bullet-custom-apply:disabled { opacity: 0.4; cursor: default; }
 
 /* ── Output panel ── */
 #output-panel {
@@ -797,6 +863,21 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   transition: background 0.12s, color 0.12s;
 }
 .seg button.on { background: #4F46E5; color: white; }
+
+/* Platform select (word-count target) */
+.settings-select {
+  appearance: none; -webkit-appearance: none; flex-shrink: 0;
+  background: var(--sel-bg); border: 1px solid var(--sel-border);
+  color: var(--editor-text); padding: 6px 28px 6px 10px;
+  border-radius: 7px; font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer; outline: none; min-width: 136px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+  transition: border-color 0.12s, background-color 0.2s;
+}
+.settings-select:hover { border-color: #4F46E5; }
+.settings-select option { background: #1E293B; color: #E2E8F0; }
+.settings-value { font-size: 13px; font-weight: 500; color: var(--ph-clr); flex-shrink: 0; }
 
 /* Tip toggle switch */
 .tip-toggle {
