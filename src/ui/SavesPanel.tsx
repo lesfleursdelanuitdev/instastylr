@@ -16,15 +16,24 @@ const CloseIcon = (
 export function SavesPanel({
   open,
   saves,
+  docId,
+  docName,
+  dirty,
   onClose,
   onSave,
+  onUpdate,
   onOpen,
   onDelete,
 }: {
   open: boolean;
   saves: SavedPost[];
+  /** Currently-bound post id, or null when editing an untitled draft. */
+  docId: string | null;
+  docName: string | null;
+  dirty: boolean;
   onClose: () => void;
   onSave: (name: string) => void;
+  onUpdate: () => void;
   onOpen: (post: SavedPost) => void;
   onDelete: (id: string) => void;
 }) {
@@ -69,12 +78,25 @@ export function SavesPanel({
             {CloseIcon}
           </button>
         </div>
+        {docId !== null && (
+          // Bound to a saved post → offer an in-place Update, plus Save-as-new below.
+          <div id="saves-update-section">
+            <div className="saves-bound-info">
+              <span className="saves-bound-label">Editing</span>
+              <span className="saves-bound-name">{docName}</span>
+              {dirty && <span className="saves-bound-dirty">unsaved changes</span>}
+            </div>
+            <button id="btn-do-update" disabled={!dirty} onClick={onUpdate}>
+              {dirty ? "Update" : "Saved"}
+            </button>
+          </div>
+        )}
         <div id="saves-save-section">
           <input
             id="save-name-input"
             ref={inputRef}
             type="text"
-            placeholder="Name this post…"
+            placeholder={docId !== null ? "Save as a new post…" : "Name this post…"}
             maxLength={60}
             autoComplete="off"
             spellCheck={false}
@@ -85,7 +107,7 @@ export function SavesPanel({
             }}
           />
           <button id="btn-do-save" onClick={doSave}>
-            Save
+            {docId !== null ? "Save as new" : "Save"}
           </button>
         </div>
         <div id="saves-list">
@@ -97,9 +119,16 @@ export function SavesPanel({
             </div>
           ) : (
             ordered.map((item) => (
-              <div className="save-item" key={item.id} onClick={() => onOpen(item)}>
+              <div
+                className={`save-item${item.id === docId ? " current" : ""}`}
+                key={item.id}
+                onClick={() => onOpen(item)}
+              >
                 <div className="save-item-info">
-                  <div className="save-item-name">{item.name}</div>
+                  <div className="save-item-name">
+                    {item.name}
+                    {item.id === docId && <span className="save-item-badge">Editing</span>}
+                  </div>
                   <div className="save-item-date">{formatDate(item.createdAt)}</div>
                 </div>
                 <div className="save-item-actions">

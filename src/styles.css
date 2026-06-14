@@ -712,3 +712,215 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Document identity (header title + dirty dot) — STATE_MODEL.md §2
+   ───────────────────────────────────────────────────────────── */
+#doc-title {
+  display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1;
+  margin: 0 14px; user-select: none;
+}
+#doc-title .doc-name {
+  font-size: 12px; font-weight: 600; color: #94A3B8;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 240px;
+}
+#doc-title .doc-dirty {
+  color: #818CF8; font-size: 22px; line-height: 1; flex-shrink: 0;
+  display: inline-flex; align-items: center; height: 14px; margin-top: -2px;
+}
+
+/* State-dependent header Save button */
+#btn-save-hdr:disabled { opacity: 0.4; cursor: default; }
+#btn-save-hdr:disabled:hover { background: transparent; color: #94A3B8; border-color: var(--sep-clr); }
+#btn-save-hdr.is-update { color: #C7D2FE; border-color: #4F46E5; }
+#btn-save-hdr.is-update:hover { background: #4F46E5; color: white; }
+
+/* ─────────────────────────────────────────────────────────────
+   Shared overlay + panel chrome (settings + side menu reuse these)
+   ───────────────────────────────────────────────────────────── */
+.overlay-scrim {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 100; opacity: 0; transition: opacity 0.25s ease;
+}
+.overlay-scrim.visible { opacity: 1; }
+
+#settings-panel, #side-menu {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(380px, 100vw);
+  background: var(--app-bg);
+  border-left: 1px solid var(--out-border);
+  z-index: 101;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(.32,.72,0,1), background 0.2s, border-color 0.2s;
+  box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+}
+#settings-panel.open, #side-menu.open { transform: translateX(0); }
+
+.panel-header {
+  background: var(--out-hdr-bg);
+  padding: 13px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; border-bottom: 1px solid var(--out-border);
+  transition: background 0.2s;
+}
+.panel-title { color: white; font-size: 13px; font-weight: 700; letter-spacing: 0.2px; }
+.btn-close-panel {
+  background: none; border: none; color: #64748B; cursor: pointer;
+  padding: 4px; border-radius: 5px; display: flex; align-items: center;
+  transition: color 0.12s, background 0.12s;
+}
+.btn-close-panel:hover { color: white; background: rgba(255,255,255,0.1); }
+
+/* ── Settings panel body ── */
+.settings-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+.settings-group { padding: 10px 16px 16px; border-bottom: 1px solid var(--out-border); }
+.settings-group:last-child { border-bottom: none; }
+.settings-group-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--ph-clr); margin: 6px 0 12px;
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 0;
+}
+.settings-label { font-size: 13px; font-weight: 600; color: var(--editor-text); display: flex; flex-direction: column; gap: 3px; }
+.tip-row .settings-label { flex: 1; }
+.tip-blurb { font-size: 11px; font-weight: 400; color: var(--ph-clr); line-height: 1.4; }
+
+/* Segmented control (theme/layout) */
+.seg { display: flex; background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 8px; padding: 2px; flex-shrink: 0; }
+.seg button {
+  background: none; border: none; color: var(--ph-clr); cursor: pointer;
+  padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.seg button.on { background: #4F46E5; color: white; }
+
+/* Tip toggle switch */
+.tip-toggle {
+  position: relative; width: 38px; height: 22px; flex-shrink: 0;
+  background: var(--sel-border); border: none; border-radius: 11px; cursor: pointer;
+  padding: 0; transition: background 0.18s;
+}
+.tip-toggle.on { background: #4F46E5; }
+.tip-knob {
+  position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  background: white; border-radius: 50%;
+  transition: transform 0.18s cubic-bezier(.34,1.56,.64,1);
+}
+.tip-toggle.on .tip-knob { transform: translateX(16px); }
+
+.settings-reset {
+  margin-top: 12px; width: 100%;
+  background: transparent; border: 1px solid var(--sep-clr); color: var(--ph-clr);
+  padding: 8px; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 600; font-family: inherit;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.settings-reset:hover:not(:disabled) { background: var(--tbtn-hover); color: var(--editor-text); border-color: #475569; }
+.settings-reset:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Side menu (navigation drawer) ── */
+.menu-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+.menu-item {
+  width: 100%; background: none; border: none; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; text-align: left;
+  border-bottom: 1px solid var(--out-border);
+  transition: background 0.1s;
+}
+.menu-item:hover { background: var(--sel-bg); }
+.menu-item-icon { font-size: 19px; line-height: 1; flex-shrink: 0; width: 24px; text-align: center; }
+.menu-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-item-label { font-size: 13px; font-weight: 600; color: var(--editor-text); }
+.menu-item-sub { font-size: 11px; color: var(--ph-clr); }
+.menu-item-arrow { color: var(--ph-clr); flex-shrink: 0; display: flex; transition: transform 0.18s; }
+.menu-item-arrow.down { transform: rotate(90deg); }
+.menu-about { padding: 4px 16px 16px; }
+.menu-about p { font-size: 12px; line-height: 1.6; color: var(--ph-clr); margin: 8px 0 0; }
+.menu-about-by { font-size: 11px; color: var(--font-stat-clr); font-style: italic; }
+
+/* ── Saves panel: bound-document (Update) section + current item ── */
+#saves-update-section {
+  padding: 12px 16px; border-bottom: 1px solid var(--out-border);
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.saves-bound-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.saves-bound-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--ph-clr); }
+.saves-bound-name { font-size: 13px; font-weight: 600; color: var(--editor-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saves-bound-dirty { font-size: 10px; color: #818CF8; font-weight: 600; }
+#btn-do-update {
+  background: #4F46E5; border: none; color: white;
+  padding: 7px 16px; border-radius: 7px; cursor: pointer;
+  font-size: 12px; font-weight: 600; font-family: inherit; flex-shrink: 0;
+  transition: background 0.15s;
+}
+#btn-do-update:hover:not(:disabled) { background: #4338CA; }
+#btn-do-update:disabled { opacity: 0.45; cursor: default; }
+
+.save-item.current { background: color-mix(in srgb, #4F46E5 10%, transparent); }
+.save-item.current:hover { background: color-mix(in srgb, #4F46E5 16%, transparent); }
+.save-item-badge {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 10px;
+  background: #4F46E5; color: white; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.3px; vertical-align: middle;
+}
+
+/* ── Toast with action (suppressible advisory) — STATE_MODEL.md §5 ── */
+#toast.has-action { display: flex; align-items: center; gap: 14px; padding-right: 8px; }
+#toast-action {
+  background: rgba(255,255,255,0.14); border: none; color: #C7D2FE; cursor: pointer;
+  padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit;
+  white-space: nowrap; pointer-events: auto; transition: background 0.12s, color 0.12s;
+}
+#toast-action:hover { background: rgba(255,255,255,0.24); color: white; }
+
+/* ── Toolbar mixed (indeterminate) states — STATE_MODEL.md §4 ── */
+.tbtn.mixed { background: var(--tbtn-hover); color: #C7D2FE; box-shadow: inset 0 0 0 1px #4F46E5; }
+#font-select.mixed { font-style: italic; opacity: 0.85; }
+
+/* ── Styled confirm dialog (replaces window.confirm) ── */
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; opacity: 0; transition: opacity 0.18s ease;
+}
+.confirm-overlay.visible { opacity: 1; }
+.confirm-box {
+  width: min(380px, 100%);
+  background: var(--app-bg);
+  border: 1px solid var(--out-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.32);
+  padding: 22px 22px 18px;
+  transform: translateY(8px) scale(0.98);
+  opacity: 0;
+  transition: transform 0.2s cubic-bezier(.34,1.3,.64,1), opacity 0.18s ease, background 0.2s, border-color 0.2s;
+}
+.confirm-box.in { transform: translateY(0) scale(1); opacity: 1; }
+.confirm-title { font-size: 15px; font-weight: 700; color: var(--editor-text); margin-bottom: 7px; }
+.confirm-message { font-size: 13px; line-height: 1.55; color: var(--ph-clr); margin-bottom: 18px; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.confirm-cancel {
+  background: transparent; border: 1px solid var(--sep-clr); color: var(--ph-clr);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.confirm-cancel:hover { background: var(--tbtn-hover); color: var(--editor-text); border-color: #475569; }
+.confirm-ok {
+  background: #4F46E5; border: none; color: white;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  transition: background 0.15s;
+}
+.confirm-ok:hover { background: #4338CA; }
+.confirm-ok.danger { background: #DC2626; }
+.confirm-ok.danger:hover { background: #B91C1C; }
+
+@media (max-width: 560px) {
+  #doc-title { display: none; }
+}

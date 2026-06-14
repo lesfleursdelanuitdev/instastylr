@@ -52,6 +52,21 @@ export function addSave(name: string, state: string): SavedPost {
   return entry;
 }
 
+/**
+ * Overwrite an existing post's state in place (the "Update" transition: the
+ * editor is bound to this id and the user committed changes back to it). Name,
+ * kind and createdAt are preserved; returns false if the id is gone.
+ */
+export function updateSave(id: string, state: string): boolean {
+  const saves = loadSaves();
+  const entry = saves.find((s) => s.id === id);
+  if (!entry) return false;
+  entry.state = state;
+  entry.kind = "post"; // a once-template entry becomes a real saved post once edited & updated
+  storeSaves(saves);
+  return true;
+}
+
 export function deleteSave(id: string): void {
   storeSaves(loadSaves().filter((s) => s.id !== id));
 }

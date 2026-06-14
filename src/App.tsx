@@ -14,12 +14,17 @@ import { fontLabel } from "./fonts/uiFonts";
 import {
   loadSaves,
   addSave,
+  updateSave,
   deleteSave,
   seedTemplateOnce,
   isValidEditorStateJson,
   type SavedPost,
 } from "./saves";
+import { isDismissed, dismissTip } from "./tips";
+import { ConfirmDialog, type ConfirmRequest } from "./ui/ConfirmDialog";
 import { SavesPanel } from "./ui/SavesPanel";
+import { SettingsPanel } from "./ui/SettingsPanel";
+import { SideMenu } from "./ui/SideMenu";
 import { WelcomeModal } from "./ui/WelcomeModal";
 
 // Font lives in each TextNode's style (see fontStyle.ts), so no custom *text*
@@ -91,11 +96,23 @@ function AppInner() {
   const [flash, setFlash] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // ── Saves / modals / toast ──────────────────────────────
+  // ── Saves / document identity ───────────────────────────
   const [saves, setSaves] = useState<SavedPost[]>([]);
+  const [docId, setDocId] = useState<string | null>(null); // bound SavedPost, or null = untitled
+  const [docName, setDocName] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false); // bound doc diverged from its snapshot
+  const [nonEmpty, setNonEmpty] = useState(false); // editor has any styled content
+  const savedSnapshotRef = useRef<string | null>(null); // serialized state as of last save/open
+
+  // ── Overlays (mutually exclusive) ───────────────────────
   const [panelOpen, setPanelOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
-  const [toast, setToast] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+
+  // ── Toast (confirmation or suppressible advisory) ───────
+  const [toast, setToast] = useState<{ msg: string; action?: { label: string; onClick: () => void } }>({ msg: "" });
   const [toastShow, setToastShow] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
 
@@ -103,14 +120,23 @@ function AppInner() {
   const draggingRef = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, h: 220, pct: 55 });
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setToastShow(true);
+  const showToast = useCallback(
+    (msg: string, action?: { label: string; onClick: () => void }) => {
+      setToast({ msg, action });
+      setToastShow(true);
+      window.clearTimeout(toastTimer.current);
+      // Advisories carry an action and need longer to read + act on.
+      toastTimer.current = window.setTimeout(() => setToastShow(false), action ? 5200 : 2200);
+    },
+    [],
+  );
+
+  const hideToast = useCallback(() => {
+    setToastShow(false);
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToastShow(false), 2200);
   }, []);
 
-  // ── Compute output + stats on every editor change ───────
+  // ── Compute output + stats + dirty on every editor change ─
   useEffect(() => {
     const compute = (state: EditorState) => {
       const out = editorStateToOutput(state);
@@ -123,6 +149,12 @@ function AppInner() {
       setLines(
         trimmed ? raw.split("\n").filter((l, i, a) => i < a.length - 1 || l.trim() !== "").length : 1,
       );
+      // Identity/dirty: serialize once and compare to the last-saved snapshot.
+      // The ref (not state) keeps this once-registered closure reading the live
+      // baseline without re-subscribing on every save. See docs/STATE_MODEL.md §3.
+      setNonEmpty(trimmed.length > 0);
+      const snap = savedSnapshotRef.current;
+      setDirty(snap !== null && JSON.stringify(state.toJSON()) !== snap);
     };
     compute(editor.getEditorState());
     return editor.registerUpdateListener(({ editorState }) => compute(editorState));
@@ -221,8 +253,23 @@ function AppInner() {
     };
   }, [layout]);
 
-  // ── Editor-touching actions ─────────────────────────────
-  // Returns false if the stored state was missing/corrupt (editor left as-is).
+  // ── Document identity / dirty (see docs/STATE_MODEL.md §2–3) ──
+  const hasUnsavedWork = docId === null ? nonEmpty : dirty;
+
+  const serializeNow = useCallback(
+    () => JSON.stringify(editor.getEditorState().toJSON()),
+    [editor],
+  );
+
+  // Bind the editor to a saved post (or unbind) and stamp the dirty baseline.
+  const bind = useCallback((id: string | null, name: string | null, snapshot: string | null) => {
+    setDocId(id);
+    setDocName(name);
+    savedSnapshotRef.current = snapshot;
+    setDirty(false);
+  }, []);
+
+  // Load post content into the editor. Returns false if stored state was corrupt.
   const openPost = useCallback(
     (post: SavedPost): boolean => {
       if (post.kind === "template") {
@@ -242,38 +289,129 @@ function AppInner() {
     [editor],
   );
 
-  const handleSave = (name: string) => {
-    const state = JSON.stringify(editor.getEditorState().toJSON());
-    addSave(name, state);
+  // Save the current editor as a NEW named post and bind to it.
+  const handleSaveNew = (name: string) => {
+    const state = serializeNow();
+    const entry = addSave(name, state);
     setSaves(loadSaves());
+    bind(entry.id, entry.name, state);
     showToast(`Saved "${name}"`);
   };
 
-  const handleOpen = (post: SavedPost) => {
+  // Commit changes back to the bound post (the "Update" transition).
+  const handleUpdate = () => {
+    if (docId === null) return;
+    const state = serializeNow();
+    updateSave(docId, state);
+    setSaves(loadSaves());
+    savedSnapshotRef.current = state;
+    setDirty(false);
+    showToast(`Updated "${docName}"`);
+  };
+
+  // The actual load, run once any guard has cleared.
+  const proceedOpen = (post: SavedPost) => {
     const ok = openPost(post);
+    if (ok) {
+      // A template opens as a fresh untitled draft (keep it reusable, don't bind);
+      // a real post binds its identity so the next Save updates in place.
+      if (post.kind === "template") bind(null, null, null);
+      else bind(post.id, post.name, serializeNow());
+    }
     setPanelOpen(false);
     showToast(ok ? `Opened "${post.name}"` : "Couldn’t open — saved post is corrupt");
+  };
+
+  const handleOpen = (post: SavedPost) => {
+    // Guard the current work before it's overwritten. Bound+dirty → auto-save
+    // (no prompt); untitled draft with content → confirm (can't auto-save, no name).
+    if (docId !== null && dirty) {
+      updateSave(docId, serializeNow());
+      setSaves(loadSaves());
+      proceedOpen(post);
+    } else if (docId === null && nonEmpty) {
+      setConfirm({
+        title: "Discard unsaved draft?",
+        message: `Your untitled draft hasn’t been saved. Opening “${post.name}” will discard it.`,
+        confirmLabel: "Discard & open",
+        tone: "danger",
+        onConfirm: () => proceedOpen(post),
+      });
+    } else {
+      proceedOpen(post);
+    }
   };
 
   const handleDelete = (id: string) => {
     deleteSave(id);
     setSaves(loadSaves());
+    // Deleting the post you're editing drops you to an untitled draft — text kept,
+    // identity lost (resolves the open flag in STATE_MODEL.md §2).
+    if (id === docId) bind(null, null, null);
     showToast("Post deleted");
   };
 
-  const handleReset = () => {
+  const doReset = () => {
     editor.update(() => {
       const root = $getRoot();
       root.clear();
       root.append($createParagraphNode());
     });
     setActiveFont("serif");
+    bind(null, null, null);
     setFlash(false);
     requestAnimationFrame(() => {
       setFlash(true);
       window.setTimeout(() => setFlash(false), 450);
     });
     editor.focus();
+  };
+
+  const handleReset = () => {
+    if (!hasUnsavedWork) {
+      doReset();
+      return;
+    }
+    setConfirm({
+      title: "Start fresh?",
+      message: "Your current post has unsaved changes. Starting fresh will discard them.",
+      confirmLabel: "Discard & reset",
+      tone: "danger",
+      onConfirm: doReset,
+    });
+  };
+
+  // Suppressible advisory raised when a font change strips bold/italic (§5).
+  const handleStripFormats = useCallback(
+    (fontId: string, bold: boolean, italic: boolean) => {
+      if (isDismissed("format-stripped")) return;
+      const what = bold && italic ? "Bold and italic aren’t" : bold ? "Bold isn’t" : "Italic isn’t";
+      showToast(`${what} available in ${fontLabel(fontId)} — removed.`, {
+        label: "Don’t show again",
+        onClick: () => {
+          dismissTip("format-stripped");
+          hideToast();
+        },
+      });
+    },
+    [showToast, hideToast],
+  );
+
+  // Overlays are mutually exclusive — opening one closes the others.
+  const openSaves = () => {
+    setSettingsOpen(false);
+    setMenuOpen(false);
+    setPanelOpen(true);
+  };
+  const openSettings = () => {
+    setPanelOpen(false);
+    setMenuOpen(false);
+    setSettingsOpen(true);
+  };
+  const openMenu = () => {
+    setPanelOpen(false);
+    setSettingsOpen(false);
+    setMenuOpen(true);
   };
 
   const copy = async () => {
@@ -338,6 +476,13 @@ function AppInner() {
 
   const dark = theme === "dark";
 
+  // State-dependent Save control (STATE_MODEL.md §2): Save / Update / disabled.
+  const saveState: "blank" | "untitled" | "dirty" | "clean" =
+    docId === null ? (nonEmpty ? "untitled" : "blank") : dirty ? "dirty" : "clean";
+  const saveDisabled = saveState === "blank" || saveState === "clean";
+  const saveLabel =
+    saveState === "dirty" ? "Update" : saveState === "clean" ? "Saved" : "Save";
+
   return (
     <div id="app">
       {/* ── App header ── */}
@@ -348,12 +493,28 @@ function AppInner() {
           </span>
           <span id="byline">by lesfleursdelanuit</span>
         </div>
+        <div id="doc-title" title={hasUnsavedWork ? "Unsaved changes" : undefined}>
+          <span className="doc-name">{docName ?? "Untitled"}</span>
+          {hasUnsavedWork && <span className="doc-dirty" aria-label="unsaved changes">•</span>}
+        </div>
         <div id="header-right">
-          <button id="btn-save-hdr" title="Save current post" onClick={() => setPanelOpen(true)}>
+          <button
+            id="btn-save-hdr"
+            className={saveState === "dirty" ? "is-update" : ""}
+            title={
+              saveState === "clean"
+                ? "No changes to save"
+                : saveState === "dirty"
+                  ? `Update “${docName}”`
+                  : "Save this post"
+            }
+            disabled={saveDisabled}
+            onClick={saveState === "dirty" ? handleUpdate : openSaves}
+          >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
-            Save
+            {saveLabel}
           </button>
-          <button id="btn-load-hdr" title="Open saved posts" onClick={() => setPanelOpen(true)}>
+          <button id="btn-load-hdr" title="Open saved posts" onClick={openSaves}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
             Open
           </button>
@@ -371,7 +532,7 @@ function AppInner() {
               )}
             </span>
           </button>
-          <button id="btn-menu" title="All saved posts" onClick={() => setPanelOpen(true)}>
+          <button id="btn-menu" title="Menu" aria-label="Open menu" onClick={openMenu}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
           </button>
         </div>
@@ -383,6 +544,7 @@ function AppInner() {
         onToggleLayout={() => setLayout(layout === "col" ? "row" : "col")}
         onReset={handleReset}
         onActiveFontChange={setActiveFont}
+        onStripFormats={handleStripFormats}
       />
 
       {/* ── Content: editor + handle + output ── */}
@@ -463,21 +625,45 @@ function AppInner() {
         onStart={closeWelcome}
         onSkip={closeWelcome}
         onPick={(post) => {
-          const ok = openPost(post);
+          handleOpen(post);
           closeWelcome();
-          showToast(ok ? `Opened "${post.name}"` : "Couldn’t open — saved post is corrupt");
         }}
       />
       <SavesPanel
         open={panelOpen}
         saves={saves}
+        docId={docId}
+        docName={docName}
+        dirty={dirty}
         onClose={() => setPanelOpen(false)}
-        onSave={handleSave}
+        onSave={handleSaveNew}
+        onUpdate={handleUpdate}
         onOpen={handleOpen}
         onDelete={handleDelete}
       />
-      <div id="toast" className={toastShow ? "show" : ""}>
-        {toast}
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        onTheme={setTheme}
+        layout={layout}
+        onLayout={setLayout}
+      />
+      <SideMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onOpenSaves={openSaves}
+        onOpenSettings={openSettings}
+        onShowWelcome={() => setWelcomeOpen(true)}
+      />
+      <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+      <div id="toast" className={`${toastShow ? "show" : ""}${toast.action ? " has-action" : ""}`}>
+        <span id="toast-msg">{toast.msg}</span>
+        {toast.action && (
+          <button id="toast-action" onClick={toast.action.onClick}>
+            {toast.action.label}
+          </button>
+        )}
       </div>
     </div>
   );
