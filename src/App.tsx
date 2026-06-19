@@ -7,6 +7,7 @@ import { $createParagraphNode, $getRoot, type EditorState } from "lexical";
 import { Editor } from "./editor/Editor";
 import { ToolbarPlugin } from "./editor/plugins/ToolbarPlugin";
 import { MarkedListNode } from "./editor/nodes/MarkedListNode";
+import { DividerNode } from "./editor/nodes/DividerNode";
 import { editorStateToOutput } from "./editor/serialize";
 import { $populatePhotoCaptionTemplate } from "./editor/template";
 import { instagramCount } from "./count";
@@ -44,6 +45,7 @@ const initialConfig: InitialConfigType = {
     ListNode,
     ListItemNode,
     MarkedListNode,
+    DividerNode,
     {
       replace: ListNode,
       with: (node: ListNode) => new MarkedListNode(node.getListType(), node.getStart()),

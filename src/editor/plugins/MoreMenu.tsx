@@ -22,14 +22,18 @@ export function MoreMenu({
   listType,
   ulIcon,
   olIcon,
+  dividerIcon,
   onToggleBullet,
   onToggleNumber,
+  onInsertDivider,
 }: {
   listType: ListState;
   ulIcon: ReactNode;
   olIcon: ReactNode;
+  dividerIcon: ReactNode;
   onToggleBullet: () => void;
   onToggleNumber: () => void;
+  onInsertDivider: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -86,6 +90,18 @@ export function MoreMenu({
           onClick={onToggleNumber}
         >
           {olIcon}
+        </button>
+        <button
+          className="tbtn"
+          id="btn-divider"
+          title="Insert divider"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onInsertDivider();
+            setOpen(false);
+          }}
+        >
+          {dividerIcon}
         </button>
         <EmojiPicker />
       </div>

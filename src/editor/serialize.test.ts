@@ -17,6 +17,7 @@ import { $patchStyleText } from "@lexical/selection";
 import { editorStateToOutput } from "./serialize";
 import { FONT_STYLE_PROP } from "./fontStyle";
 import { transformRun } from "../fonts/transform";
+import { $createDividerNode, DEFAULT_DIVIDER, DividerNode } from "./nodes/DividerNode";
 
 const makeEditor = () => createEditor({ namespace: "test", onError: (e) => { throw e; } });
 const styleFor = (fontId: string) => `${FONT_STYLE_PROP}: ${fontId};`;
@@ -75,6 +76,72 @@ describe("editor -> output projection", () => {
       { discrete: true },
     );
     expect(editorStateToOutput(editor.getEditorState())).toBe("a\nb\nc");
+  });
+});
+
+describe("divider projection", () => {
+  const makeDividerEditor = () =>
+    createEditor({ namespace: "test", nodes: [DividerNode], onError: (e) => { throw e; } });
+
+  it("collapses a divider to its line with a blank line above and below", () => {
+    const editor = makeDividerEditor();
+    editor.update(
+      () => {
+        const root = $getRoot();
+        root.clear();
+        const above = $createParagraphNode();
+        above.append($createTextNode("above"));
+        const below = $createParagraphNode();
+        below.append($createTextNode("below"));
+        root.append(above);
+        root.append($createDividerNode());
+        root.append(below);
+      },
+      { discrete: true },
+    );
+    expect(editorStateToOutput(editor.getEditorState())).toBe(`above\n\n${DEFAULT_DIVIDER}\n\nbelow`);
+  });
+
+  it("emits the per-node custom line and survives a JSON round-trip", () => {
+    const editor = makeDividerEditor();
+    editor.update(
+      () => {
+        const root = $getRoot();
+        root.clear();
+        root.append($createDividerNode("✦ ✦ ✦"));
+      },
+      { discrete: true },
+    );
+    expect(editorStateToOutput(editor.getEditorState())).toBe("\n✦ ✦ ✦\n");
+
+    const restored = makeDividerEditor();
+    restored.setEditorState(restored.parseEditorState(JSON.stringify(editor.getEditorState().toJSON())));
+    expect(editorStateToOutput(restored.getEditorState())).toBe("\n✦ ✦ ✦\n");
+  });
+
+  it("persists divider recipe and wrapper through JSON round-trip", () => {
+    const editor = makeDividerEditor();
+    const recipe = {
+      kind: "framed" as const,
+      flankChar: "─",
+      flankLen: 4,
+      center: { mode: "single" as const, char: "✦" },
+      gap: "space" as const,
+    };
+    editor.update(
+      () => {
+        const root = $getRoot();
+        root.clear();
+        root.append($createDividerNode("──── ✦ ────", recipe));
+      },
+      { discrete: true },
+    );
+    const json = JSON.stringify(editor.getEditorState().toJSON());
+    expect(json).toContain('"recipe"');
+
+    const restored = makeDividerEditor();
+    restored.setEditorState(restored.parseEditorState(json));
+    expect(editorStateToOutput(restored.getEditorState())).toBe("\n──── ✦ ────\n");
   });
 });
 

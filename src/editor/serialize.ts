@@ -21,6 +21,7 @@ import {
 import { $isListNode, $isListItemNode, type ListNode } from "@lexical/list";
 import { fontIdFromStyle } from "./fontStyle";
 import { $isMarkedListNode, DEFAULT_BULLET } from "./nodes/MarkedListNode";
+import { $isDividerNode } from "./nodes/DividerNode";
 import { transformRun } from "../fonts/transform";
 
 /** Indentation per nesting level, as plain spaces (not structural). */
@@ -60,6 +61,10 @@ function nodeToString(node: LexicalNode): string {
     });
   }
   if ($isListNode(node)) return listToString(node, 0);
+  // A divider collapses to its stored line with one blank line above and below.
+  // Top-level blocks are joined by a single "\n", so wrapping the line in "\n…\n"
+  // yields the blank line on each side (e.g. "above\n\n━━━\n\nbelow").
+  if ($isDividerNode(node)) return `\n${node.getLine()}\n`;
   if ($isElementNode(node)) {
     return node.getChildren().map(nodeToString).join("");
   }

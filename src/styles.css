@@ -471,7 +471,7 @@ body {
 
 /* Picker popover (fixed-positioned to escape #editor-wrap's overflow clipping) */
 #bullet-menu {
-  position: fixed; z-index: 60; width: 200px;
+  position: fixed; z-index: 60; width: min(280px, 92vw);
   background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
   border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 10px;
 }
@@ -479,19 +479,34 @@ body {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
   color: #94A3B8; margin-bottom: 8px;
 }
+.bullet-categories {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; max-height: 72px; overflow-y: auto;
+}
+.bullet-category {
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 999px;
+  color: #94A3B8; font-size: 10px; font-weight: 600; padding: 3px 8px;
+  font-family: inherit; cursor: pointer;
+}
+.bullet-category.active { background: rgba(79,70,229,0.2); color: #C7D2FE; border-color: #4F46E5; }
 .bullet-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.bullet-preset-grid { max-height: 140px; overflow-y: auto; margin-bottom: 4px; }
 .bullet-swatch {
   height: 28px; display: flex; align-items: center; justify-content: center;
   background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 6px;
   color: #E2E8F0; cursor: pointer; font-size: 15px; line-height: 1;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.1s, border-color 0.1s; padding: 0 2px; min-width: 0;
 }
+.bullet-swatch.nested { font-size: 11px; grid-column: span 2; }
+.bullet-nested-pair { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.bullet-nested-sep { color: #64748B; font-size: 10px; }
 .bullet-swatch:hover { border-color: #4F46E5; }
 .bullet-swatch.active { background: #4F46E5; color: #fff; border-color: #4F46E5; }
 .bullet-custom { display: flex; gap: 6px; margin-top: 9px; }
 .bullet-custom input {
   flex: 1; min-width: 0; background: var(--sel-bg); border: 1px solid var(--sel-border);
-  border-radius: 6px; padding: 5px 8px; color: #E2E8F0; font-size: 13px; font-family: inherit; outline: none;
+  border-radius: 6px; padding: 5px 8px; color: #E2E8F0;
+  /* 16px avoids iOS auto-zoom on focus, which shifts the viewport and used to dismiss the menu */
+  font-size: 16px; font-family: inherit; outline: none;
 }
 .bullet-custom input::placeholder { color: #94A3B8; }
 .bullet-custom input:focus { border-color: #4F46E5; }
@@ -501,6 +516,123 @@ body {
   transition: opacity 0.12s;
 }
 .bullet-custom-apply:disabled { opacity: 0.4; cursor: default; }
+
+/* ── Divider block: a decorative rule that ships as plain Unicode (DividerNode) ── */
+.i-divider-host { margin: 0; }
+.i-divider {
+  display: flex; flex-direction: column; align-items: center;
+  /* The visual gap mirrors the blank line baked in above/below on output. */
+  margin: 0.6em 0; padding: 2px 0; border-radius: 8px;
+  border: 1px solid transparent; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.i-divider:hover { background: rgba(99,102,241,0.07); }
+.i-divider.selected { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.4); }
+.i-divider-line {
+  color: var(--ph-clr); letter-spacing: 0.04em; line-height: 1.4;
+  white-space: pre-wrap; user-select: none; text-align: center;
+}
+
+/* Inline picker, attached below the divider while it's selected. */
+.i-divider-picker {
+  margin-top: 8px; width: min(320px, 94vw);
+  background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
+  border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 10px;
+  cursor: default;
+}
+.i-divider-title {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: #94A3B8; margin-bottom: 8px;
+}
+.divider-tabs {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;
+}
+.divider-tab {
+  flex: 1 1 auto; min-width: 0;
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 6px;
+  color: #CBD5E1; font-size: 11px; font-weight: 600; padding: 5px 6px;
+  font-family: inherit; cursor: pointer;
+}
+.divider-tab.active { background: #4F46E5; color: #fff; border-color: #4F46E5; }
+.divider-builder { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.divider-field {
+  display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94A3B8;
+}
+.divider-field > span:first-child { flex: 0 0 72px; }
+.divider-field input[type="text"],
+.divider-field input[type="number"],
+.divider-field select {
+  flex: 1; min-width: 0; background: var(--sel-bg); border: 1px solid var(--sel-border);
+  border-radius: 6px; padding: 4px 8px; color: #E2E8F0; font-size: 16px; font-family: inherit; outline: none;
+}
+.divider-field input[type="range"] { flex: 1; }
+.divider-field-value { flex: 0 0 24px; text-align: right; color: #E2E8F0; font-size: 11px; }
+.divider-check {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; color: #94A3B8;
+}
+.divider-palette {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.divider-palette-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 6px;
+  color: #E2E8F0; cursor: pointer; font-size: 14px; padding: 0;
+}
+.divider-palette-btn.active { background: #4F46E5; color: #fff; border-color: #4F46E5; }
+.divider-preview {
+  display: flex; flex-direction: column; gap: 4px; padding: 6px 8px;
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 6px;
+}
+.divider-preview-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #64748B;
+}
+.divider-preview-line {
+  color: #E2E8F0; font-size: 12px; line-height: 1.3; word-break: break-all; text-align: center;
+}
+.divider-apply {
+  background: #4F46E5; color: #fff; border: none; border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.divider-apply:disabled { opacity: 0.4; cursor: default; }
+.divider-categories {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; max-height: 72px; overflow-y: auto;
+}
+.divider-category {
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 999px;
+  color: #94A3B8; font-size: 10px; font-weight: 600; padding: 3px 8px;
+  font-family: inherit; cursor: pointer;
+}
+.divider-category.active { background: rgba(79,70,229,0.2); color: #C7D2FE; border-color: #4F46E5; }
+.i-divider-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.divider-preset-grid { max-height: 120px; overflow-y: auto; }
+.divider-sequence { display: flex; flex-direction: column; gap: 6px; }
+.divider-sequence-label { font-size: 10px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.04em; }
+.divider-sequence-slots { display: flex; flex-wrap: wrap; gap: 4px; }
+.divider-sequence-slot { display: flex; align-items: center; gap: 2px; }
+.divider-sequence-slot input {
+  width: 36px; background: var(--sel-bg); border: 1px solid var(--sel-border);
+  border-radius: 6px; padding: 4px; color: #E2E8F0; font-size: 16px; text-align: center; font-family: inherit;
+}
+.divider-sequence-remove {
+  width: 22px; height: 22px; background: transparent; border: 1px solid var(--sel-border);
+  border-radius: 4px; color: #94A3B8; cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
+}
+.divider-sequence-remove:disabled { opacity: 0.35; cursor: default; }
+.divider-sequence-add {
+  align-self: flex-start; background: var(--sel-bg); border: 1px solid var(--sel-border);
+  border-radius: 6px; color: #CBD5E1; font-size: 11px; font-weight: 600; padding: 4px 8px;
+  font-family: inherit; cursor: pointer;
+}
+.divider-sequence-add:disabled { opacity: 0.35; cursor: default; }
+.i-divider-swatch {
+  height: 28px; display: flex; align-items: center; justify-content: center;
+  background: var(--sel-bg); border: 1px solid var(--sel-border); border-radius: 6px;
+  color: #E2E8F0; cursor: pointer; font-size: 11px; line-height: 1; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis; padding: 0 4px;
+  transition: background 0.1s, border-color 0.1s;
+}
+.i-divider-swatch:hover { border-color: #4F46E5; }
+.i-divider-swatch.active { background: #4F46E5; color: #fff; border-color: #4F46E5; }
 
 /* ── Output panel ── */
 #output-panel {

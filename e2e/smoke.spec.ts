@@ -134,6 +134,31 @@ test("bullet handle changes a bulleted list's marker (preset + custom)", async (
   await expect(page.locator("#output-body")).toContainText("✿ item one");
 });
 
+test("custom bullet input stays open when the viewport scrolls (mobile keyboard)", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("item one");
+
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-ul").click();
+
+  const handle = page.locator("#bullet-handle .bullet-handle-btn");
+  await handle.click();
+  const input = page.locator(".bullet-custom input");
+  await input.click();
+
+  // Mobile keyboards resize/scroll the visual viewport; the menu must not unmount.
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("scroll", { bubbles: true }));
+    window.visualViewport?.dispatchEvent(new Event("resize"));
+  });
+  await expect(page.locator("#bullet-menu")).toBeVisible();
+  await expect(input).toBeFocused();
+
+  await input.fill("✿");
+  await page.locator(".bullet-custom-apply").click();
+  await expect(page.locator("#output-body")).toContainText("✿ item one");
+});
+
 test("reset on an unsaved draft asks for confirmation", async ({ page }) => {
   const editor = await start(page);
   await editor.pressSequentially("draft text");
