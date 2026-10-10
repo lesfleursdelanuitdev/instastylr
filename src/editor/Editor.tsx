@@ -4,6 +4,7 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { PersistencePlugin } from "./plugins/PersistencePlugin";
+import { BulletMenuPlugin } from "./plugins/BulletMenuPlugin";
 
 /**
  * The contenteditable surface plus its Lexical plugins. The surrounding
@@ -23,6 +24,7 @@ export function Editor() {
       <HistoryPlugin />
       <ListPlugin />
       <PersistencePlugin />
+      <BulletMenuPlugin />
     </>
   );
 }

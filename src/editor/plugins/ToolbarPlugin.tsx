@@ -12,17 +12,18 @@ import {
   UNDO_COMMAND,
 } from "lexical";
 import { $patchStyleText, $getSelectionStyleValueForProperty } from "@lexical/selection";
-import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
+import { $getNearestNodeOfType, $insertNodeToNearestRoot, mergeRegister } from "@lexical/utils";
 import {
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
   ListNode,
   REMOVE_LIST_COMMAND,
 } from "@lexical/list";
+import { $createDividerNode } from "../nodes/DividerNode";
 import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
 import { UI_FONTS } from "../../fonts/uiFonts";
-import { EmojiPicker } from "./EmojiPicker";
+import { MoreMenu } from "./MoreMenu";
 
 type ListState = "bullet" | "number" | null;
 type Layout = "row" | "col";
@@ -56,6 +57,9 @@ const I = {
   ),
   ol: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" /><path d="M4 6h1v4" strokeWidth="1.8" /><path d="M4 10h2" strokeWidth="1.8" /><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" strokeWidth="1.8" /></svg>
+  ),
+  divider: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><circle cx="6" cy="6" r="0.5" fill="currentColor" stroke="none" /><circle cx="12" cy="6" r="0.5" fill="currentColor" stroke="none" /><circle cx="18" cy="6" r="0.5" fill="currentColor" stroke="none" /><circle cx="6" cy="18" r="0.5" fill="currentColor" stroke="none" /><circle cx="12" cy="18" r="0.5" fill="currentColor" stroke="none" /><circle cx="18" cy="18" r="0.5" fill="currentColor" stroke="none" /></svg>
   ),
   rows: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
@@ -193,6 +197,11 @@ export function ToolbarPlugin({
     editor.focus();
   };
 
+  const insertDivider = () => {
+    editor.update(() => $insertNodeToNearestRoot($createDividerNode()));
+    editor.focus();
+  };
+
   const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
 
   return (
@@ -229,28 +238,6 @@ export function ToolbarPlugin({
       </button>
       <div className="sep" />
 
-      <button
-        className={`tbtn${listType === "bullet" ? " active" : ""}`}
-        id="btn-ul"
-        title="Bulleted list"
-        aria-pressed={listType === "bullet"}
-        onMouseDown={noFocusSteal}
-        onClick={toggleBullet}
-      >
-        {I.ul}
-      </button>
-      <button
-        className={`tbtn${listType === "number" ? " active" : ""}`}
-        id="btn-ol"
-        title="Numbered list"
-        aria-pressed={listType === "number"}
-        onMouseDown={noFocusSteal}
-        onClick={toggleNumber}
-      >
-        {I.ol}
-      </button>
-      <div className="sep" />
-
       <select
         id="font-select"
         title="Font style"
@@ -270,7 +257,15 @@ export function ToolbarPlugin({
         ))}
       </select>
 
-      <EmojiPicker />
+      <MoreMenu
+        listType={listType}
+        ulIcon={I.ul}
+        olIcon={I.ol}
+        dividerIcon={I.divider}
+        onToggleBullet={toggleBullet}
+        onToggleNumber={toggleNumber}
+        onInsertDivider={insertDivider}
+      />
 
       <div id="toolbar-right">
         <div className="sep" />

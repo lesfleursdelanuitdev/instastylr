@@ -110,6 +110,55 @@ test("save binds an identity, then edits offer Update", async ({ page }) => {
   await expect(page.locator("#toast-msg")).toContainText('Updated "My Trip"');
 });
 
+test("bullet handle changes a bulleted list's marker (preset + custom)", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("item one");
+
+  // Lists live in the More menu now: open it, then toggle a bulleted list.
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-ul").click();
+  await expect(page.locator("#output-body")).toContainText("• item one");
+
+  // A handle is anchored to the list; opening it reveals the bullet picker.
+  const handle = page.locator("#bullet-handle .bullet-handle-btn");
+  await expect(handle).toBeVisible();
+  await handle.click();
+
+  // Pick the "+" preset → projection re-emits with the new marker.
+  await page.locator(".bullet-swatch", { hasText: "+" }).click();
+  await expect(page.locator("#output-body")).toContainText("+ item one");
+
+  // Custom field: any single character (here an emoji) becomes the bullet.
+  await page.locator(".bullet-custom input").fill("✿");
+  await page.locator(".bullet-custom-apply").click();
+  await expect(page.locator("#output-body")).toContainText("✿ item one");
+});
+
+test("custom bullet input stays open when the viewport scrolls (mobile keyboard)", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("item one");
+
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-ul").click();
+
+  const handle = page.locator("#bullet-handle .bullet-handle-btn");
+  await handle.click();
+  const input = page.locator(".bullet-custom input");
+  await input.click();
+
+  // Mobile keyboards resize/scroll the visual viewport; the menu must not unmount.
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("scroll", { bubbles: true }));
+    window.visualViewport?.dispatchEvent(new Event("resize"));
+  });
+  await expect(page.locator("#bullet-menu")).toBeVisible();
+  await expect(input).toBeFocused();
+
+  await input.fill("✿");
+  await page.locator(".bullet-custom-apply").click();
+  await expect(page.locator("#output-body")).toContainText("✿ item one");
+});
+
 test("reset on an unsaved draft asks for confirmation", async ({ page }) => {
   const editor = await start(page);
   await editor.pressSequentially("draft text");
