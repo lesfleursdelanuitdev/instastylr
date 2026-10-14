@@ -13,8 +13,7 @@ export type UiFont = {
   label: string;
   /** "Aa" in this font, for compact spots (the toolbar button and menu). */
   preview: string;
-  /** A longer sample in this font, for the font panel. */
-  sample: string;
+  style: FontStyle;
   bold: boolean;
   italic: boolean;
   /** A true combined bold-italic alphabet (not bold or italic standing in for it). */
@@ -33,16 +32,57 @@ const LABELS: Record<string, string> = {
   circled: "Circled",
 };
 
-const SAMPLE = "Hello World 123";
+/** What a font looks like, for the panel's Style filter. Every font must be listed. */
+export type FontStyle = "classic" | "script" | "gothic" | "outline" | "boxed" | "small" | "marked" | "lookalike";
+
+export const FONT_STYLES: { id: FontStyle; label: string }[] = [
+  { id: "classic", label: "Classic" },
+  { id: "script", label: "Script" },
+  { id: "gothic", label: "Gothic" },
+  { id: "outline", label: "Outline" },
+  { id: "boxed", label: "Boxed" },
+  { id: "small", label: "Small" },
+  { id: "marked", label: "Marked" },
+  { id: "lookalike", label: "Lookalike" },
+];
+
+const STYLE_BY_ID: Record<string, FontStyle> = {
+  serif: "classic", sans: "classic", mono: "classic", fullwidth: "classic",
+  script: "script",
+  fraktur: "gothic",
+  double: "outline",
+  circled: "boxed", squares2: "boxed", invertedSquares: "boxed",
+  thickBlockFramed: "boxed", diametricAngleFrame: "boxed", weirdBox: "boxed",
+  tiny: "small", subscript: "small", superscript: "small",
+  // plain letters with a mark through, under or around them
+  strikeThrough: "marked", tildeStrikeThrough: "marked", slashThrough: "marked",
+  underline: "marked", doubleUnderline: "marked", stinky: "marked",
+  arrowBelow: "marked", crossAboveBelow: "marked", firework: "marked",
+  // letters borrowed from other alphabets that happen to look like ours
+  taiViet: "lookalike", cuteDotsAndScribbles: "lookalike", yiNuosu: "lookalike",
+  squiggle: "lookalike", squiggle3: "lookalike", squiggle4: "lookalike",
+  squiggle5: "lookalike", squiggle6: "lookalike", upperAngles: "lookalike",
+  greek: "lookalike", symbols: "lookalike", currency: "lookalike",
+  asianStyle: "lookalike", asianStyle2: "lookalike", bentText: "lookalike",
+  neon: "lookalike", futureAlien: "lookalike",
+};
+
+export const DEFAULT_SAMPLE = "Hello World 123";
+
+/** Sample text in a font, with bold/italic where the font has them (else its regular face). */
+export function renderSample(fontId: string, text: string, bold = false, italic = false): string {
+  return transformRun({ text, fontId, bold, italic });
+}
 
 export const ALL_UI_FONTS: UiFont[] = FONTS.map((f) => {
-  const render = (text: string) => transformRun({ text, fontId: f.id, bold: false, italic: false });
+  const style = STYLE_BY_ID[f.id];
+  if (!style) throw new Error(`Font "${f.id}" has no style for the font panel's filter`);
   const v = getFont(f.id).variants;
   return {
     id: f.id,
     label: LABELS[f.id] ?? f.label,
-    preview: render("Aa"),
-    sample: render(SAMPLE),
+    preview: renderSample(f.id, "Aa"),
+    style,
     bold: Boolean(v.bold),
     italic: Boolean(v.italic),
     boldItalic: Boolean(v.boldItalic),
@@ -62,16 +102,35 @@ export function fontLabel(id: string): string {
   return FONT_BY_ID.get(id)?.label ?? "Serif";
 }
 
-/** Font-panel filters: which styled alphabets a font has. */
-export type FontFilter = "all" | "bold" | "italic" | "boldItalic";
+/** Font-panel filters: the look of a font, and which styled alphabets it has. Both apply at once. */
+export type FontFeature = "any" | "bold" | "italic" | "boldItalic";
 
-export const FONT_FILTERS: { id: FontFilter; label: string }[] = [
-  { id: "all", label: "All" },
+export const FONT_FEATURES: { id: FontFeature; label: string }[] = [
+  { id: "any", label: "Any" },
   { id: "bold", label: "Bold" },
   { id: "italic", label: "Italic" },
   { id: "boldItalic", label: "Bold + italic" },
 ];
 
+/** "recent" = the fonts in `recent` (ids, newest first), shown in that order. */
+export type FontFilter = { style: FontStyle | "all" | "recent"; feature: FontFeature; recent?: string[] };
+
 export function filterFonts(fonts: UiFont[], filter: FontFilter): UiFont[] {
-  return filter === "all" ? fonts : fonts.filter((f) => f[filter]);
+  const has = (f: UiFont) => filter.feature === "any" || f[filter.feature];
+  if (filter.style === "recent") {
+    const byId = new Map(fonts.map((f) => [f.id, f]));
+    return (filter.recent ?? []).map((id) => byId.get(id)).filter((f): f is UiFont => Boolean(f) && has(f!));
+  }
+  return fonts.filter((f) => (filter.style === "all" || f.style === filter.style) && has(f));
+}
+
+/** For the toolbar menu: the newest recently used fonts that aren't already in its short list. */
+export const MENU_RECENT_MAX = 5;
+export function menuRecentFonts(recent: string[]): UiFont[] {
+  const quick = new Set(QUICK_FONTS.map((f) => f.id));
+  return recent
+    .filter((id) => !quick.has(id))
+    .map((id) => FONT_BY_ID.get(id))
+    .filter((f): f is UiFont => Boolean(f))
+    .slice(0, MENU_RECENT_MAX);
 }

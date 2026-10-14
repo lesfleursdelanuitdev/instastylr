@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
+  $getRoot,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
@@ -23,7 +24,8 @@ import { $createDividerNode } from "../nodes/DividerNode";
 import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
 import { FontMenu } from "../../ui/FontMenu";
-import { FontPanel } from "../../ui/FontPanel";
+import { FontPanel, type PanelSample } from "../../ui/FontPanel";
+import { loadRecentFonts, recordFontUse } from "../../fonts/recent";
 import { MoreMenu } from "./MoreMenu";
 
 type ListState = "bullet" | "number" | null;
@@ -95,6 +97,20 @@ export function ToolbarPlugin({
   const [fontId, setFontId] = useState("serif");
   const [listType, setListType] = useState<ListState>(null);
   const [fontPanelOpen, setFontPanelOpen] = useState(false);
+  const [panelSample, setPanelSample] = useState<PanelSample | null>(null);
+  const [recent, setRecent] = useState<string[]>(() => loadRecentFonts());
+  const openFontPanel = () => {
+    // The panel previews whatever is selected (one line, kept short), else a stock sample.
+    const raw = editor.getEditorState().read(() => {
+      const sel = $getSelection();
+      return $isRangeSelection(sel) && !sel.isCollapsed() ? sel.getTextContent() : "";
+    });
+    const text = raw.replace(/\s+/g, " ").trim();
+    setPanelSample(
+      text ? { text: text.length > 48 ? `${text.slice(0, 47)}…` : text, bold: bold === "on", italic: italic === "on" } : null,
+    );
+    setFontPanelOpen(true);
+  };
   const closeFontPanel = useCallback(() => {
     setFontPanelOpen(false);
     editor.focus();
@@ -156,7 +172,14 @@ export function ToolbarPlugin({
     let strippedItalic = false;
 
     editor.update(() => {
-      const selection = $getSelection();
+      let selection = $getSelection();
+      // No caret yet (the editor was never focused, e.g. straight from the page
+      // load to the font panel): put one at the end, where typing will start,
+      // so the font takes effect instead of silently doing nothing.
+      if (!$isRangeSelection(selection)) {
+        $getRoot().selectEnd();
+        selection = $getSelection();
+      }
       if (!$isRangeSelection(selection)) return;
       $patchStyleText(selection, { [FONT_STYLE_PROP]: nextFontId === "serif" ? null : nextFontId });
 
@@ -183,6 +206,7 @@ export function ToolbarPlugin({
     });
 
     setFontId(nextFontId);
+    setRecent(recordFontUse(nextFontId));
     editor.focus();
     if (strippedBold || strippedItalic) onStripFormats(nextFontId, strippedBold, strippedItalic);
   };
@@ -248,12 +272,15 @@ export function ToolbarPlugin({
 
       <FontMenu
         fontId={fontId === MIXED_FONT ? null : fontId}
+        recent={recent}
         onPick={applyFont}
-        onMore={() => setFontPanelOpen(true)}
+        onMore={openFontPanel}
       />
       <FontPanel
         open={fontPanelOpen}
         fontId={fontId === MIXED_FONT ? null : fontId}
+        sample={panelSample}
+        recent={recent}
         onPick={(id) => {
           setFontPanelOpen(false);
           applyFont(id);

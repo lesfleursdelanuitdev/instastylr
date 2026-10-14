@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { QUICK_FONTS, uiFont } from "../fonts/uiFonts";
+import { QUICK_FONTS, menuRecentFonts, uiFont } from "../fonts/uiFonts";
 
 const Chevron = (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
@@ -20,10 +20,13 @@ const Arrow = (
  */
 export function FontMenu({
   fontId,
+  recent,
   onPick,
   onMore,
 }: {
   fontId: string | null;
+  /** Recently applied font ids, newest first (see fonts/recent.ts). */
+  recent: string[];
   onPick: (fontId: string) => void;
   onMore: () => void;
 }) {
@@ -33,6 +36,29 @@ export function FontMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const current = fontId === null ? undefined : uiFont(fontId);
+  // Keep the editor's selection alive while the menu is used with a pointer.
+  const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
+  const recentFonts = menuRecentFonts(recent);
+
+  const option = (f: { id: string; preview: string; label: string }) => (
+    <button
+      key={f.id}
+      type="button"
+      role="option"
+      aria-selected={f.id === fontId}
+      className="font-option"
+      data-font={f.id}
+      onMouseDown={noFocusSteal}
+      onClick={() => {
+        setOpen(false);
+        onPick(f.id);
+      }}
+    >
+      <span className="font-preview">{f.preview}</span>
+      <span className="font-option-label">{f.label}</span>
+      <span className="font-option-check">{f.id === fontId && Check}</span>
+    </button>
+  );
 
   // Close on outside press / Escape (mirrors MoreMenu).
   useEffect(() => {
@@ -78,9 +104,6 @@ export function FontMenu({
     all[next]?.focus();
   };
 
-  // Keep the editor's selection alive while the menu is used with a pointer.
-  const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
-
   return (
     <div id="font-menu-wrap" ref={rootRef}>
       <button
@@ -109,25 +132,18 @@ export function FontMenu({
       </button>
       {open && (
         <div id="font-menu" ref={menuRef} role="listbox" aria-label="Font" onKeyDown={onMenuKey}>
-          {QUICK_FONTS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              role="option"
-              aria-selected={f.id === fontId}
-              className="font-option"
-              data-font={f.id}
-              onMouseDown={noFocusSteal}
-              onClick={() => {
-                setOpen(false);
-                onPick(f.id);
-              }}
-            >
-              <span className="font-preview">{f.preview}</span>
-              <span className="font-option-label">{f.label}</span>
-              <span className="font-option-check">{f.id === fontId && Check}</span>
-            </button>
-          ))}
+          {QUICK_FONTS.map(option)}
+          {recentFonts.length > 0 && (
+            <>
+              <div className="font-menu-sep" role="separator" />
+              <div className="font-menu-heading" id="font-menu-recent-heading">
+                Recent
+              </div>
+              <div role="group" aria-labelledby="font-menu-recent-heading" className="font-menu-recent">
+                {recentFonts.map(option)}
+              </div>
+            </>
+          )}
           <div className="font-menu-sep" role="separator" />
           <button
             type="button"

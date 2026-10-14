@@ -428,8 +428,11 @@ body {
   background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
   border-radius: 10px; box-shadow: var(--shadow-pop); padding: 5px;
   display: flex; flex-direction: column; gap: 1px;
+  /* the Recent group can add five rows: scroll rather than run off a short screen */
+  max-height: calc(100dvh - 140px); overflow-y: auto; overscroll-behavior: contain;
   animation: popIn 0.14s ease-out both;
 }
+#font-menu > * { flex-shrink: 0; }
 @keyframes popIn {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -447,6 +450,11 @@ body {
 .font-option-label { flex: 1; white-space: nowrap; }
 .font-option-check { width: 14px; display: flex; justify-content: center; color: var(--accent-soft); flex-shrink: 0; }
 .font-menu-sep { height: 1px; background: var(--sep-clr); margin: 4px 2px; }
+.font-menu-heading {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: #94A3B8; padding: 4px 10px 2px;
+}
+.font-menu-recent { display: flex; flex-direction: column; gap: 1px; }
 #btn-more-fonts { color: #C7D2FE; font-weight: 600; }
 #btn-more-fonts .font-option-check { color: #94A3B8; }
 
@@ -464,9 +472,23 @@ body {
 }
 #font-panel.open { transform: translateX(0); visibility: visible; transition-delay: 0s; box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
 .font-filters {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 12px 16px; border-bottom: 1px solid var(--out-border); flex-shrink: 0;
 }
+.font-filter-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.font-filter-label {
+  width: 40px; flex-shrink: 0; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--muted);
+}
+.font-filter-status { display: flex; justify-content: space-between; gap: 12px; padding-left: 46px; font-size: 12px; color: var(--muted); }
+.font-sample-note { white-space: nowrap; }
+.font-empty { padding: 32px 16px; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.font-empty-reset {
+  display: block; margin: 12px auto 0; background: none; border: 1px solid var(--field-border);
+  border-radius: 8px; color: var(--editor-text); font-size: 13px; font-weight: 600; font-family: inherit;
+  padding: 8px 14px; cursor: pointer;
+}
+.font-empty-reset:hover { border-color: var(--accent); }
 .font-filter {
   background: var(--field-bg); border: 1px solid var(--field-border); border-radius: 999px;
   color: var(--muted); font-size: 12px; font-weight: 600; font-family: inherit;
@@ -476,7 +498,7 @@ body {
 }
 .font-filter:hover { border-color: var(--accent); color: var(--editor-text); }
 .font-filter.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.font-count { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.font-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .font-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 env(safe-area-inset-bottom, 0px); }
 .font-row {
   display: flex; align-items: center; gap: 10px; width: 100%;
@@ -1342,6 +1364,12 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
 
   #saves-panel, #settings-panel, #side-menu { width: 100vw; border-left: none; }
   #font-panel { width: 100vw; border-right: none; }
+  /* one swipeable line per filter, so the fonts start higher up */
+  .font-filters { padding-left: 0; padding-right: 0; }
+  .font-filter-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 0 16px; overscroll-behavior-x: contain; }
+  .font-filter-row::-webkit-scrollbar { display: none; }
+  .font-filter-row .font-filter { flex-shrink: 0; }
+  .font-filter-status { padding-left: 62px; padding-right: 16px; }
   #welcome-overlay { padding: 12px; }
   #welcome-header { padding: 22px 20px 0; }
   #welcome-body { padding: 14px 20px 18px; }

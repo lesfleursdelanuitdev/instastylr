@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { LINGOJAM_FONTS } from "./lingojam";
 import { BASE_FONTS, FONTS, supportsBold, supportsItalic } from "../mappings";
 import { transformRun } from "../transform";
-import { ALL_UI_FONTS, QUICK_FONTS, filterFonts, fontLabel } from "../uiFonts";
+import { ALL_UI_FONTS, FONT_STYLES, QUICK_FONTS, filterFonts, fontLabel, menuRecentFonts, renderSample } from "../uiFonts";
 import { isKnownFont } from "../../editor/fontStyle";
 
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
@@ -41,10 +41,37 @@ describe("scraped LingoJam fonts", () => {
 
   it("stay out of the toolbar's short list and the bold/italic filters", () => {
     expect(QUICK_FONTS.map((f) => f.id)).toEqual(["serif", "sans", "script", "fraktur"]);
-    expect(filterFonts(ALL_UI_FONTS, "all").length).toBe(FONTS.length);
-    expect(filterFonts(ALL_UI_FONTS, "bold").map((f) => f.id)).toEqual(["serif", "sans", "script", "fraktur"]);
-    expect(filterFonts(ALL_UI_FONTS, "italic").map((f) => f.id)).toEqual(["serif", "sans"]);
-    expect(filterFonts(ALL_UI_FONTS, "boldItalic").map((f) => f.id)).toEqual(["serif", "sans"]);
+    const all = { style: "all" as const, feature: "any" as const };
+    expect(filterFonts(ALL_UI_FONTS, all).length).toBe(FONTS.length);
+    expect(filterFonts(ALL_UI_FONTS, { ...all, feature: "bold" }).map((f) => f.id)).toEqual(["serif", "sans", "script", "fraktur"]);
+    expect(filterFonts(ALL_UI_FONTS, { ...all, feature: "italic" }).map((f) => f.id)).toEqual(["serif", "sans"]);
+    expect(filterFonts(ALL_UI_FONTS, { ...all, feature: "boldItalic" }).map((f) => f.id)).toEqual(["serif", "sans"]);
+  });
+
+  it("every font has a style, every style has a font, and the two filters combine", () => {
+    const all = { style: "all" as const, feature: "any" as const };
+    for (const s of FONT_STYLES) expect(filterFonts(ALL_UI_FONTS, { ...all, style: s.id }).length).toBeGreaterThan(0);
+    expect(FONT_STYLES.reduce((n, s) => n + filterFonts(ALL_UI_FONTS, { ...all, style: s.id }).length, 0)).toBe(FONTS.length);
+    expect(filterFonts(ALL_UI_FONTS, { style: "script", feature: "any" }).map((f) => f.id)).toEqual(["script"]);
+    expect(filterFonts(ALL_UI_FONTS, { style: "boxed", feature: "bold" })).toEqual([]);
+    expect(filterFonts(ALL_UI_FONTS, { style: "classic", feature: "italic" }).map((f) => f.id)).toEqual(["serif", "sans"]);
+  });
+
+  it("recent: the panel filter keeps recency order; the menu skips the short list and caps at five", () => {
+    const recent = ["currency", "serif", "tiny", "nope", "mono", "script", "neon", "greek", "symbols", "double"];
+    expect(filterFonts(ALL_UI_FONTS, { style: "recent", feature: "any", recent }).map((f) => f.id)).toEqual([
+      "currency", "serif", "tiny", "mono", "script", "neon", "greek", "symbols", "double",
+    ]);
+    expect(filterFonts(ALL_UI_FONTS, { style: "recent", feature: "bold", recent }).map((f) => f.id)).toEqual(["serif", "script"]);
+    expect(filterFonts(ALL_UI_FONTS, { style: "recent", feature: "any" })).toEqual([]);
+    expect(menuRecentFonts(recent).map((f) => f.id)).toEqual(["currency", "tiny", "mono", "neon", "greek"]);
+    expect(menuRecentFonts([])).toEqual([]);
+  });
+
+  it("renders a sample in a font, with bold/italic only where the font has them", () => {
+    expect(renderSample("currency", "Hello")).toBe("ⱧɆⱠⱠØ");
+    expect(renderSample("serif", "Hi", true, false)).toBe("𝐇𝐢");
+    expect(renderSample("currency", "Hi", true, true)).toBe(renderSample("currency", "Hi"));
   });
 
   for (const font of LINGOJAM_FONTS) {

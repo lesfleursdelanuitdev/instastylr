@@ -200,13 +200,28 @@ test("font panel: slides in from More fonts, filters by style, closes", async ({
   const all = await rows.count();
   expect(all).toBeGreaterThan(30);
 
+  // Rows preview the selected text ("Hello"), not the stock sample.
+  await expect(panel.locator('[data-font="currency"] .font-row-sample')).toHaveText("ⱧɆⱠⱠØ");
+  await expect(panel.locator(".font-sample-note")).toBeVisible();
+
+  // "Has" filter: which styled alphabets a font comes with.
   await panel.locator('[data-filter="bold"]').click();
   await expect(rows).toHaveCount(4);
   await panel.locator('[data-filter="italic"]').click();
   await expect(rows).toHaveCount(2);
   await panel.locator('[data-filter="boldItalic"]').click();
   await expect(rows).toHaveCount(2);
-  await panel.locator('[data-filter="all"]').click();
+  await panel.locator('[data-filter="any"]').click();
+  await expect(rows).toHaveCount(all);
+
+  // Style filter, and both together (an impossible pair shows a way back).
+  await panel.locator('[data-style="script"]').click();
+  await expect(rows).toHaveCount(1);
+  await panel.locator('[data-style="boxed"]').click();
+  await expect(rows).toHaveCount(6);
+  await panel.locator('[data-filter="bold"]').click();
+  await expect(rows).toHaveCount(0);
+  await panel.locator(".font-empty-reset").click();
   await expect(rows).toHaveCount(all);
 
   // Picking applies the font to the selection and closes the panel.
@@ -214,6 +229,33 @@ test("font panel: slides in from More fonts, filters by style, closes", async ({
   await expect(panel).toBeHidden();
   await expect(page.locator("#output-body")).toHaveText("ⱧɆⱠⱠØ");
   await expect(page.locator("#font-select")).toContainText("Currency");
+
+  // Fonts applied from the panel show up in the menu under "Recent" (the short
+  // list's own fonts don't), and in the panel's Recent filter, newest first.
+  await page.locator("#font-select").click();
+  await page.locator('#font-menu [data-font="sans"]').click();
+  await page.locator("#font-select").click();
+  await expect(page.locator("#font-menu .font-menu-recent [role=option]")).toHaveCount(1);
+  await expect(page.locator('#font-menu .font-menu-recent [data-font="currency"]')).toBeVisible();
+  await page.locator("#btn-more-fonts").click();
+  await panel.locator('[data-font="tiny"]').click();
+  await page.locator("#font-select").click();
+  await expect(page.locator("#font-menu .font-menu-recent [role=option]")).toHaveCount(2);
+  await expect(page.locator("#font-menu .font-menu-recent [role=option]").first()).toHaveAttribute("data-font", "tiny");
+  await page.locator("#btn-more-fonts").click();
+  await panel.locator('[data-style="recent"]').click();
+  await expect(rows).toHaveCount(3);
+  await expect(rows.first()).toHaveAttribute("data-font", "tiny");
+  await page.keyboard.press("Escape");
+
+  // With nothing selected the rows fall back to the stock sample, and the filters reset.
+  await page.keyboard.press("End");
+  await page.locator("#font-select").click();
+  await page.locator("#btn-more-fonts").click();
+  await expect(panel.locator('[data-font="sans"] .font-row-sample')).toHaveText("𝖧𝖾𝗅𝗅𝗈 𝖶𝗈𝗋𝗅𝖽 𝟣𝟤𝟥");
+  await expect(panel.locator(".font-sample-note")).toHaveCount(0);
+  await expect(rows).toHaveCount(all);
+  await page.keyboard.press("Escape");
 
   // Close button and Escape both dismiss it without changing the font.
   await page.locator("#font-select").click();
@@ -225,7 +267,7 @@ test("font panel: slides in from More fonts, filters by style, closes", async ({
   await expect(panel).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(panel).toBeHidden();
-  await expect(page.locator("#output-body")).toHaveText("ⱧɆⱠⱠØ");
+  await expect(page.locator("#output-body")).toHaveText("ʜᴇʟʟᴏ"); // still Tiny: closing never changes the font
 });
 
 test("divider editor: stays open while editing, applies, closes three ways", async ({ page }) => {
@@ -308,4 +350,26 @@ test("bullet and divider panels resize by dragging or with the arrow keys, and r
   await page.keyboard.press("ArrowLeft");
   const d1 = (await divider.boundingBox())!;
   expect(Math.round(d1.width)).toBe(Math.round(d0.width) - 16);
+});
+
+test("a font picked before the editor was ever focused still applies and shows everywhere", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#btn-welcome-skip").click();
+  // Straight to the panel, never having clicked into the editor.
+  await page.locator("#font-select").click();
+  await page.locator("#btn-more-fonts").click();
+  await page.locator('#font-panel [data-font="currency"]').click();
+  await expect(page.locator("#font-select")).toContainText("Currency");
+  await expect(page.locator("#font-stat")).toHaveText("Currency");
+  await page.keyboard.type("Hi");
+  await expect(page.locator("#output-body")).toHaveText("Ⱨł");
+
+  // Same through the menu, on a fresh page.
+  await page.goto("/");
+  await page.locator("#font-select").click();
+  await page.locator('#font-menu [data-font="script"]').click();
+  await expect(page.locator("#font-select")).toContainText("Script");
+  await expect(page.locator("#font-stat")).toHaveText("Script");
+  await page.keyboard.type("Hi");
+  await expect(page.locator("#output-body")).toHaveText("ℋ𝒾");
 });
