@@ -22,7 +22,7 @@ import {
 import { $createDividerNode } from "../nodes/DividerNode";
 import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
-import { UI_FONTS } from "../../fonts/uiFonts";
+import { UI_FONTS, MORE_UI_FONTS } from "../../fonts/uiFonts";
 import { MoreMenu } from "./MoreMenu";
 
 type ListState = "bullet" | "number" | null;
@@ -258,6 +258,13 @@ export function ToolbarPlugin({
             {f.select}
           </option>
         ))}
+        <optgroup label="More styles">
+          {MORE_UI_FONTS.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.select}
+            </option>
+          ))}
+        </optgroup>
       </select>
 
       <MoreMenu

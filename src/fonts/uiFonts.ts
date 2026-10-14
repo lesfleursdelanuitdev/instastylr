@@ -6,6 +6,8 @@
  * labels shown in the <select> and the plain labels shown in the footer. `id`
  * references an engine font in FONTS.
  */
+import { LINGOJAM_FONTS } from "./scraped/lingojam";
+
 export type UiFont = { id: string; label: string; select: string };
 
 export const UI_FONTS: UiFont[] = [
@@ -17,7 +19,14 @@ export const UI_FONTS: UiFont[] = [
   { id: "double",  label: "Outline",     select: "𝔸𝕒  Outline" },
 ];
 
-const LABEL_BY_ID = new Map(UI_FONTS.map((f) => [f.id, f.label]));
+/** The scraped look-alike fonts, shown as a second group; the preview is the font's own "Aa". */
+export const MORE_UI_FONTS: UiFont[] = LINGOJAM_FONTS.map((f) => ({
+  id: f.id,
+  label: f.label,
+  select: `${f.map.A ?? "A"}${f.map.a ?? "a"}  ${f.label}`,
+}));
+
+const LABEL_BY_ID = new Map([...UI_FONTS, ...MORE_UI_FONTS].map((f) => [f.id, f.label]));
 
 export function fontLabel(id: string): string {
   return LABEL_BY_ID.get(id) ?? "Serif";

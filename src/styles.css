@@ -419,6 +419,7 @@ body {
 }
 #font-select:hover { border-color: var(--accent); }
 #font-select option { background: #1E293B; color: #E2E8F0; }
+#font-select optgroup { background: #1E293B; color: #94A3B8; font-style: normal; }
 
 /* Layout toggle — hidden on mobile */
 #btn-layout { display: none; }

@@ -12,6 +12,8 @@
  * `exceptions` and MUST override the offset, or real words render as tofu.
  */
 
+import { LINGOJAM_FONTS } from "./scraped/lingojam";
+
 /** A built variant is a per-character lookup, or null meaning "pass through". */
 export type VariantMap = Map<string, string> | null;
 
@@ -33,12 +35,17 @@ type CircledDesc = { kind: "circled" };
 /** No substitution at all (plain ASCII). */
 type IdentityDesc = { kind: "identity" };
 
-type VariantDesc = MathDesc | OffsetDesc | CircledDesc | IdentityDesc;
+/** An explicit lookup table (scraped fonts: no arithmetic, values may be several code points). */
+type TableDesc = { kind: "table"; map: Record<string, string> };
+
+type VariantDesc = MathDesc | OffsetDesc | CircledDesc | IdentityDesc | TableDesc;
 
 // ---------------------------------------------------------------------------
 // Variant descriptors (the raw data). Keyed by an internal variant name that
 // fonts below reference. Base codepoints verified against the Unicode charts.
 // ---------------------------------------------------------------------------
+
+const scrapedVariant = (id: string) => `scraped:${id}`;
 
 const VARIANT_DESCRIPTORS: Record<string, VariantDesc> = {
   identity: { kind: "identity" },
@@ -94,6 +101,12 @@ const VARIANT_DESCRIPTORS: Record<string, VariantDesc> = {
   // Non-math blocks
   fullwidth: { kind: "offset", offset: 0xfee0, from: 0x21, to: 0x7e },
   circled: { kind: "circled" },
+
+  // Scraped lookup tables (src/fonts/scraped/), prefixed so a scraped name can
+  // never shadow a variant above.
+  ...Object.fromEntries(
+    LINGOJAM_FONTS.map((f): [string, VariantDesc] => [scrapedVariant(f.id), { kind: "table", map: f.map }]),
+  ),
 };
 
 // ---------------------------------------------------------------------------
@@ -102,6 +115,7 @@ const VARIANT_DESCRIPTORS: Record<string, VariantDesc> = {
 
 function buildVariant(desc: VariantDesc): VariantMap {
   if (desc.kind === "identity") return null;
+  if (desc.kind === "table") return new Map(Object.entries(desc.map));
 
   const map = new Map<string, string>();
   const put = (ch: string, cp: number) => map.set(ch, String.fromCodePoint(cp));
@@ -160,7 +174,8 @@ export type FontDef = {
   };
 };
 
-export const FONTS: FontDef[] = [
+/** The hand-built fonts: Unicode's own styled alphabets. */
+export const BASE_FONTS: FontDef[] = [
   {
     id: "serif",
     label: "Default",
@@ -177,6 +192,12 @@ export const FONTS: FontDef[] = [
   { id: "double", label: "Double-struck", variants: { regular: "double" } },
   { id: "fullwidth", label: "Fullwidth", variants: { regular: "fullwidth" } },
   { id: "circled", label: "Circled", variants: { regular: "circled" } },
+];
+
+/** Everything usable: the base fonts, then the scraped look-alike tables (no bold/italic). */
+export const FONTS: FontDef[] = [
+  ...BASE_FONTS,
+  ...LINGOJAM_FONTS.map((f) => ({ id: f.id, label: f.label, variants: { regular: scrapedVariant(f.id) } })),
 ];
 
 const FONT_BY_ID = new Map(FONTS.map((f) => [f.id, f]));

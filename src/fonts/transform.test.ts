@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { transformRun } from "./transform";
-import { FONTS, resolveVariantMap, supportsBold, supportsItalic } from "./mappings";
+import { resolveVariantMap, supportsBold, supportsItalic, BASE_FONTS } from "./mappings";
 
 const run = (text: string, fontId: string, bold = false, italic = false) =>
   transformRun({ text, fontId, bold, italic });
@@ -113,7 +113,9 @@ describe("mapping completeness", () => {
     [true, true],
   ];
 
-  for (const font of FONTS) {
+  // The hand-built fonts only: scraped tables may legitimately use several code
+  // points per character (see scraped/lingojam.test.ts for their guard).
+  for (const font of BASE_FONTS) {
     for (const [bold, italic] of everyModifier) {
       it(`${font.id} (b=${bold} i=${italic}) emits only defined, single code points`, () => {
         const map = resolveVariantMap(font.id, bold, italic);
