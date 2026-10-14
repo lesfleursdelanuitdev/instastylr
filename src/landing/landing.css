@@ -172,10 +172,53 @@ html.js .facts.in li { opacity: 1; transform: none; }
   .who-grid > div:first-child { border-left: 0; padding-left: 0; }
 }
 
-.where-label { margin: clamp(36px, 6vh, 56px) 0 16px; }
-.where { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 12px; margin: 0; padding: 0; }
-.where li { padding: 10px 18px; border: 1px solid #ffffff26; border-radius: 999px; font: 400 14px var(--body); color: var(--soft); white-space: nowrap; }
-.where li:first-child { border-color: #ff9fd066; color: var(--pink); }
+.where-label { margin: clamp(30px, 5vh, 48px) 0 14px; }
+.where { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 12px; }
+.where button {
+  min-height: 44px; padding: 0 20px; border: 1px solid #ffffff26; border-radius: 999px; background: none;
+  font: 400 14px var(--body); color: var(--soft); white-space: nowrap; cursor: pointer;
+  transition: border-color .35s, color .35s, background .35s, transform .35s var(--ease-out);
+}
+.where button:hover { border-color: #ff9fd080; color: var(--text); }
+.where button[aria-selected="true"] { border-color: var(--pink); color: var(--ink); background: var(--pink); }
+.where button:active { transform: scale(.97); }
+.where-also { margin-top: 14px; font-size: 13px; color: var(--muted); }
+/* Phones stack the two cards, which puts the tabs a long way below what they change.
+   There the tabs ride along at the bottom of the screen while the cards are in view. */
+@media (max-width: 699px) {
+  .where {
+    position: sticky; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 5;
+    padding: 8px; border-radius: 22px; background: #050406d9; border: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .where button { min-height: 40px; padding: 0 14px; font-size: 13px; }
+}
+.posts { overflow: hidden; align-items: start; }
+.post-card { will-change: opacity, transform; }
+
+/* scenes inside the before/after cards */
+.scene-text { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.scene-post .post-caption { min-height: 13em; }
+.scene-bio { padding: 18px; }
+.bio-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.bio-top > div { display: grid; gap: 8px; justify-items: start; }
+.bio-avatar { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px #0c0a10, 0 0 0 4px #ff9fd0; }
+.fake-btn { padding: 4px 18px; border-radius: 8px; background: #ffffff1f; font-size: 12px; font-weight: 600; }
+.scene-bio .scene-text { min-height: 8em; }
+.video-thumb { position: relative; aspect-ratio: 16 / 9; overflow: hidden; }
+.video-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.video-play { position: absolute; inset: 0; margin: auto; width: 54px; height: 54px; border-radius: 50%; background: #000000a6; }
+.video-play::after { content: ""; position: absolute; top: 50%; left: 54%; translate: -50% -50%; border: solid transparent; border-width: 10px 0 10px 16px; border-left-color: #fff; }
+.video-body { padding: 14px 16px 18px; display: grid; gap: 10px; }
+.video-title { font-size: 16px; }
+.video-desc { padding: 12px 14px; border-radius: 10px; background: #ffffff0f; min-height: 10.5em; }
+.scene-linkedin { padding: 18px; }
+.li-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.li-top > div { display: grid; gap: 2px; }
+.li-avatar { width: 46px; height: 46px; }
+.li-headline { font-size: 12px; color: #a9a4b8; }
+.li-body { min-height: 10em; }
+.post:not(.is-styled) .scene-text { color: #a9a4b8; }
 
 /* ── Not found ── */
 .lost { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 22px; text-align: center; padding: 120px var(--gutter) 80px; }

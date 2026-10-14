@@ -2,26 +2,66 @@ import { heroFrames } from "./demos";
 import { createMock } from "./mock";
 import { bootChrome } from "./chrome";
 import { mountShots } from "./shots";
-import { lineText, outputLines, type Line } from "./state";
+import { fillCard, SCENE_LABELS, type SceneId } from "./scenes";
 
 const { reduced } = bootChrome();
 mountShots();
 
-// ── The same caption twice: as plain text, and as InstaStylr would hand it over ──
-const CAPTION: Line[] = [
-  { segs: [{ text: "New in the shop", bold: true }] },
-  { divider: "─── ✦ ───" },
-  { segs: [{ text: "Three prints from the night garden:" }] },
-  { segs: [{ text: "Dahlias, pink" }], bullet: "✿" },
-  { segs: [{ text: "Iris, violet" }], bullet: "✿" },
-  { segs: [{ text: "Water lilies" }], bullet: "✿" },
-  { divider: "─── ✦ ───" },
-  { segs: [{ text: "Free shipping this week.", italic: true }] },
-];
-// what a platform leaves of a formatted paste: the words, nothing else
-const PLAIN = CAPTION.filter((l): l is Extract<Line, { segs: unknown }> => "segs" in l).map((l) => lineText(l));
-document.querySelectorAll<HTMLElement>("[data-caption]").forEach((el) => {
-  el.textContent = (el.dataset.caption === "styled" ? outputLines(CAPTION) : PLAIN).join("\n");
+// ── The before/after, switchable between places (an Instagram post by default) ──
+const panel = document.getElementById("scene-panel");
+const cards = {
+  plain: document.querySelector<HTMLElement>('[data-scene-card="plain"]'),
+  styled: document.querySelector<HTMLElement>('[data-scene-card="styled"]'),
+};
+const tabs = [...document.querySelectorAll<HTMLButtonElement>("[data-scene]")];
+const EASE = "cubic-bezier(.2, .8, .2, 1)";
+let scene: SceneId = "post";
+let turn = 0; // the newest switch wins if tabs are pressed quickly
+const fill = (id: SceneId) => {
+  if (cards.plain) fillCard(cards.plain, id, false);
+  if (cards.styled) fillCard(cards.styled, id, true);
+  panel?.setAttribute("aria-label", SCENE_LABELS[id]);
+};
+fill(scene);
+
+async function showScene(id: SceneId) {
+  if (id === scene || !panel) return;
+  scene = id;
+  const mine = ++turn;
+  tabs.forEach((b) => {
+    const on = b.dataset.scene === id;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  if (reduced) return fill(id);
+  const figs = [...panel.querySelectorAll<HTMLElement>(".post-card")];
+  // out: the cards dim, blur a little and sink…
+  const outs = figs.map((f, i) =>
+    f.animate([{ opacity: 1, filter: "blur(0)", transform: "none" }, { opacity: 0, filter: "blur(6px)", transform: "translateY(10px) scale(.985)" }], { duration: 240, delay: i * 50, easing: "ease-in", fill: "forwards" }),
+  );
+  await Promise.all(outs.map((a) => a.finished.catch(() => undefined)));
+  if (mine !== turn) return;
+  // …the panel eases to its new height while the new content rises in
+  const before = panel.offsetHeight;
+  fill(id);
+  const after = panel.offsetHeight;
+  panel.animate([{ height: `${before}px` }, { height: `${after}px` }], { duration: 480, easing: EASE });
+  figs.forEach((f, i) => {
+    const a = f.animate([{ opacity: 0, filter: "blur(6px)", transform: "translateY(-10px) scale(.985)" }, { opacity: 1, filter: "blur(0)", transform: "none" }], { duration: 520, delay: 80 + i * 70, easing: EASE, fill: "both" });
+    a.onfinish = () => a.cancel();
+  });
+  outs.forEach((a) => a.cancel());
+}
+tabs.forEach((b, i) => {
+  b.addEventListener("click", () => showScene(b.dataset.scene as SceneId));
+  b.addEventListener("keydown", (e) => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const next = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + step + tabs.length) % tabs.length;
+    tabs[next].focus();
+    showScene(tabs[next].dataset.scene as SceneId);
+  });
 });
 
 // ── The facts row: numbers count to their value when the row comes into view ──

@@ -60,24 +60,24 @@
       <section class="result" aria-labelledby="h-result">
         <p class="eyebrow reveal">The difference</p>
         <h2 id="h-result" class="reveal d1">Same words. <em>One gets read.</em></h2>
-        <div class="posts">
+        <div class="posts" id="scene-panel" role="tabpanel" aria-label="Instagram post">
           <figure class="post reveal d1">
             <figcaption>Pasted from a notes app</figcaption>
-            <div class="post-card">
-              <div class="post-top"><span class="post-avatar"></span><b>lesfleursdelanuit</b></div>
-              <img class="post-photo" src="/src/landing/photos/dahlias-pink.jpg" width="512" height="640" loading="lazy" decoding="async" alt="Two layered pink dahlias lit from behind by warm golden light" />
-              <p class="post-caption" data-caption="plain"></p>
-            </div>
+            <div class="post-card scene-post" data-scene-card="plain"></div>
           </figure>
           <figure class="post is-styled reveal d2">
             <figcaption>Pasted from InstaStylr</figcaption>
-            <div class="post-card">
-              <div class="post-top"><span class="post-avatar"></span><b>lesfleursdelanuit</b></div>
-              <img class="post-photo" src="/src/landing/photos/dahlias-pink.jpg" width="512" height="640" loading="lazy" decoding="async" alt="" />
-              <p class="post-caption" data-caption="styled"></p>
-            </div>
+            <div class="post-card scene-post" data-scene-card="styled"></div>
           </figure>
         </div>
+        <p class="eyebrow where-label reveal">See it in</p>
+        <div class="where" role="tablist" aria-label="Where the text goes">
+          <button type="button" role="tab" aria-selected="true" aria-controls="scene-panel" data-scene="post">Instagram post</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="scene-panel" tabindex="-1" data-scene="bio">Instagram bio</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="scene-panel" tabindex="-1" data-scene="video">YouTube video</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="scene-panel" tabindex="-1" data-scene="linkedin">LinkedIn post</button>
+        </div>
+        <p class="where-also reveal d1">It works the same on TikTok, X, Threads and Facebook.</p>
         <ul class="facts">
           <li><b data-count="42">42</b><span>fonts</span></li>
           <li><b data-count="7">7</b><span>platforms' limits counted</span></li>
@@ -125,14 +125,6 @@
           <div class="reveal d1"><h3>Photographers</h3><p>Titles in bold, camera settings set apart, a credit line under a divider. A photo caption template is built in.</p></div>
           <div class="reveal d2"><h3>Anyone who posts</h3><p>If you write on these platforms and want a few words to stand out, it takes a selection and one tap.</p></div>
         </div>
-        <p class="eyebrow where-label reveal">Use it for</p>
-        <ul class="where reveal d1">
-          <li>Instagram captions</li>
-          <li>Instagram bio</li>
-          <li>YouTube captions</li>
-          <li>LinkedIn posts and profile</li>
-          <li>TikTok, X, Threads, Facebook</li>
-        </ul>
       </section>
 
       <section class="feature" aria-labelledby="h-styles">

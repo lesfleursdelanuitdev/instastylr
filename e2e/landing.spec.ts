@@ -24,17 +24,18 @@ test("landing page: only the hero is animated; sections are ordinary blocks with
   expect(await first.locator(".mock-out").innerText()).toBe(shot); // the picture doesn't change
 
   // The result section: the same caption plain and styled, from the real engine.
-  await expect(page.locator('[data-caption="plain"]')).toContainText("New in the shop");
-  await expect(page.locator('[data-caption="plain"]')).not.toContainText("✿");
-  await expect(page.locator('[data-caption="styled"]')).toContainText("𝐍𝐞𝐰 𝐢𝐧 𝐭𝐡𝐞 𝐬𝐡𝐨𝐩");
-  await expect(page.locator('[data-caption="styled"]')).toContainText("✿ Dahlias, pink");
+  const plain = page.locator('[data-scene-card="plain"]');
+  const styled = page.locator('[data-scene-card="styled"]');
+  await expect(plain).toContainText("New in the shop");
+  await expect(plain).not.toContainText("✿");
+  await expect(styled).toContainText("𝐍𝐞𝐰 𝐢𝐧 𝐭𝐡𝐞 𝐬𝐡𝐨𝐩");
+  await expect(styled).toContainText("✿ Dahlias, pink");
   await expect(page.locator(".post-card img.post-photo")).toHaveCount(2);
   expect(await page.locator(".post-card img.post-photo").first().evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0 || new Promise((r) => (i.onload = () => r(true))))).toBe(true);
   await expect(page.locator(".places")).toHaveCount(0); // one worked example (the posts) is enough
   await expect(page.locator(".compare-row:not(.compare-head)")).toHaveCount(4);
   await expect(page.locator(".compare")).toContainText("Bulleted lists and divider lines too.");
   await expect(page.locator(".who-grid h3")).toHaveText(["Creators", "Photographers", "Anyone who posts"]);
-  await expect(page.locator(".where li")).toHaveText(["Instagram captions", "Instagram bio", "YouTube captions", "LinkedIn posts and profile", "TikTok, X, Threads, Facebook"]);
 
   // The button says where it was pressed and asks the app for the dark look the pictures show.
   await page.locator(".closing .btn").click();
@@ -185,4 +186,52 @@ test("the facts row counts up to its numbers when it comes into view", async ({ 
   expect(seen[seen.length - 1]).toBe(42);
   await expect(page.locator(".facts b")).toHaveText(["42", "7", "0", "100%"]);
   expect(await first.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(52);
+});
+
+test("before/after: the tabs under it switch the place, the Instagram post is the default", async ({ page }) => {
+  await page.goto("/");
+  const tabs = page.locator('[role="tab"]');
+  await expect(tabs).toHaveText(["Instagram post", "Instagram bio", "YouTube video", "LinkedIn post"]);
+  await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+  const plain = page.locator('[data-scene-card="plain"]');
+  const styled = page.locator('[data-scene-card="styled"]');
+  await expect(styled).toHaveClass(/scene-post/);
+  // the tabs sit below the before/after
+  const postsBottom = await page.locator(".posts").evaluate((e) => e.getBoundingClientRect().bottom);
+  expect(await tabs.first().evaluate((e) => e.getBoundingClientRect().top)).toBeGreaterThan(postsBottom);
+
+  await page.locator('[data-scene="video"]').click();
+  await expect(styled).toHaveClass(/scene-video/);
+  await expect(styled).toContainText("➤ 2:10 Camera settings");
+  await expect(plain).toContainText("2:10 Camera settings");
+  await expect(plain).not.toContainText("➤");
+  await expect(page.locator('[data-scene="video"]')).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#scene-panel")).toHaveAttribute("aria-label", "YouTube video");
+
+  // keyboard: arrows move between tabs and switch the place
+  await page.locator('[data-scene="video"]').focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(styled).toHaveClass(/scene-linkedin/);
+  await expect(styled).toContainText("𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝗲𝗿");
+  await page.keyboard.press("Home");
+  await expect(styled).toHaveClass(/scene-post/);
+
+  // pressing quickly: the last one wins and nothing is left half faded
+  for (const id of ["bio", "video", "linkedin", "bio"]) await page.locator(`[data-scene="${id}"]`).click();
+  await expect(styled).toHaveClass(/scene-bio/);
+  await expect(styled).toContainText("𝐋𝐞𝐬 𝐅𝐥𝐞𝐮𝐫𝐬 𝐝𝐞 𝐥𝐚 𝐍𝐮𝐢𝐭");
+  await expect.poll(() => styled.evaluate((e) => Number(getComputedStyle(e).opacity))).toBe(1);
+  await expect.poll(() => page.locator(".posts").evaluate((e) => e.getAnimations().length)).toBe(0);
+});
+
+test("before/after on a phone: the tabs stay on screen while the stacked cards are in view", async ({ browser }) => {
+  const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true })).newPage();
+  await page.goto("/");
+  await page.locator('[data-scene-card="plain"]').evaluate((e) => e.scrollIntoView({ block: "start" }));
+  await page.waitForTimeout(300);
+  const box = (await page.locator('[role="tablist"]').boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(740);
+  expect(box.y).toBeGreaterThan(0);
+  await page.locator('[data-scene="bio"]').tap();
+  await expect(page.locator('[data-scene-card="plain"]')).toHaveClass(/scene-bio/);
 });
