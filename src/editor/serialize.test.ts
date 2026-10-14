@@ -83,6 +83,42 @@ describe("divider projection", () => {
   const makeDividerEditor = () =>
     createEditor({ namespace: "test", nodes: [DividerNode], onError: (e) => { throw e; } });
 
+  const build = (blocks: (string | null)[]) => {
+    // string = a paragraph with that text ("" = empty paragraph); null = a divider
+    const editor = makeDividerEditor();
+    editor.update(
+      () => {
+        const root = $getRoot();
+        root.clear();
+        for (const b of blocks) {
+          if (b === null) root.append($createDividerNode("───"));
+          else {
+            const para = $createParagraphNode();
+            if (b) para.append($createTextNode(b));
+            root.append(para);
+          }
+        }
+      },
+      { discrete: true },
+    );
+    return editorStateToOutput(editor.getEditorState());
+  };
+
+  it("empty paragraphs next to a divider don't stack into extra blank lines", () => {
+    expect(build(["a", "", null, "", "b"])).toBe("a\n\n───\n\nb");
+    expect(build(["a", "", "", null, "b"])).toBe("a\n\n───\n\nb");
+  });
+
+  it("nothing blank at the start or end of the copy", () => {
+    expect(build(["", null, "after"])).toBe("───\n\nafter"); // divider inserted into an empty editor
+    expect(build(["a", "", "", ""])).toBe("a"); // Enter pressed a few times at the end
+    expect(build(["", "", "a"])).toBe("a");
+  });
+
+  it("keeps blank lines the user puts between ordinary paragraphs", () => {
+    expect(build(["a", "", "", "b"])).toBe("a\n\n\nb");
+  });
+
   it("collapses a divider to its line with a blank line above and below", () => {
     const editor = makeDividerEditor();
     editor.update(
@@ -112,11 +148,11 @@ describe("divider projection", () => {
       },
       { discrete: true },
     );
-    expect(editorStateToOutput(editor.getEditorState())).toBe("\n✦ ✦ ✦\n");
+    expect(editorStateToOutput(editor.getEditorState())).toBe("✦ ✦ ✦") /* a divider alone: no blank lines at the ends */;
 
     const restored = makeDividerEditor();
     restored.setEditorState(restored.parseEditorState(JSON.stringify(editor.getEditorState().toJSON())));
-    expect(editorStateToOutput(restored.getEditorState())).toBe("\n✦ ✦ ✦\n");
+    expect(editorStateToOutput(restored.getEditorState())).toBe("✦ ✦ ✦") /* a divider alone: no blank lines at the ends */;
   });
 
   it("persists divider recipe and wrapper through JSON round-trip", () => {
@@ -141,7 +177,7 @@ describe("divider projection", () => {
 
     const restored = makeDividerEditor();
     restored.setEditorState(restored.parseEditorState(json));
-    expect(editorStateToOutput(restored.getEditorState())).toBe("\n──── ✦ ────\n");
+    expect(editorStateToOutput(restored.getEditorState())).toBe("──── ✦ ────");
   });
 });
 

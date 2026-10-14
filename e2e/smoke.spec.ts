@@ -352,7 +352,7 @@ test("bullet and divider panels resize by dragging or with the arrow keys, and r
   expect(Math.round(d1.width)).toBe(Math.round(d0.width) - 16);
 });
 
-test("a font picked before the editor was ever focused still applies and shows everywhere", async ({ page }) => {
+test("a font picked before the editor was ever focused still applies and shows everywhere", async ({ page, browser }) => {
   await page.goto("/app/");
   await page.locator("#btn-welcome-skip").click();
   // Straight to the panel, never having clicked into the editor.
@@ -364,12 +364,72 @@ test("a font picked before the editor was ever focused still applies and shows e
   await page.keyboard.type("Hi");
   await expect(page.locator("#output-body")).toHaveText("Ⱨł");
 
-  // Same through the menu, on a fresh page.
+  // Same through the menu, in a fresh browser (the draft is kept when a page is left).
+  page = await (await browser.newContext({ baseURL: test.info().project.use.baseURL })).newPage();
   await page.goto("/app/");
+  await page.locator("#btn-welcome-skip").click();
   await page.locator("#font-select").click();
   await page.locator('#font-menu [data-font="script"]').click();
   await expect(page.locator("#font-select")).toContainText("Script");
   await expect(page.locator("#font-stat")).toHaveText("Script");
   await page.keyboard.type("Hi");
   await expect(page.locator("#output-body")).toHaveText("ℋ𝒾");
+});
+
+test("a shortcut can't store bold or italic in a font that has neither", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("Hello");
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.locator("#font-select").click();
+  await page.locator("#btn-more-fonts").click();
+  await page.locator('#font-panel [data-font="mono"]').click();
+  await page.keyboard.press("ControlOrMeta+B");
+  await page.keyboard.press("ControlOrMeta+I");
+  await page.locator("#font-select").click();
+  await page.locator('#font-menu [data-font="serif"]').click();
+  await expect(page.locator("#output-body")).toHaveText("Hello"); // no hidden bold/italic surfacing
+});
+
+test("Tab nests a list item (with the pair's sub-marker), Shift+Tab un-nests, Tab elsewhere leaves the editor", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("one");
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-ul").click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".editor")).toBeFocused(); // closing the menu keeps the caret
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("two");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#output-body")).toHaveText("• one\n  ◦ two");
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#output-body")).toHaveText("• one\n• two");
+});
+
+test("the copy has no blank lines at either end, one around each divider, and the counts match it", async ({ page }) => {
+  const editor = await start(page);
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-divider").click(); // into an empty editor
+  await editor.pressSequentially("after");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#output-body")).toHaveText("━━━━━━━━━━\n\nafter");
+  await expect(page.locator("#word-stat")).toHaveText("1 word"); // the divider isn't a word
+  await expect(page.locator("#line-stat")).toHaveText("3 lines");
+  await expect(page.locator("#char-stat")).toHaveText("17 chars");
+});
+
+test("a saved post is still the open post after a reload", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("My caption");
+  await page.locator("#btn-save-hdr").click();
+  await page.locator("#save-name-input").fill("Trip");
+  await page.locator("#btn-do-save").click();
+  await page.reload();
+  await expect(page.locator("#doc-title .doc-name")).toHaveText("Trip");
+  await expect(page.locator("#btn-save-hdr")).toContainText("Saved");
+  await page.locator(".editor").click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.type("!");
+  await expect(page.locator("#btn-save-hdr")).toContainText("Update");
 });

@@ -5,6 +5,7 @@ import {
   $getSelection,
   $isRangeSelection,
   $isTextNode,
+  COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   FORMAT_TEXT_COMMAND,
   REDO_COMMAND,
@@ -159,6 +160,27 @@ export function ToolbarPlugin({
           return false;
         },
         COMMAND_PRIORITY_LOW,
+      ),
+      // The B and I buttons go grey in a font with no bold/italic, but the keyboard
+      // shortcuts send the same command. Swallow it there, or a hidden bold would be
+      // stored and surface later when the text is switched to a font that has one.
+      editor.registerCommand(
+        FORMAT_TEXT_COMMAND,
+        (format) => {
+          if (format !== "bold" && format !== "italic") return false;
+          return editor.getEditorState().read(() => {
+            const selection = $getSelection();
+            if (!$isRangeSelection(selection)) return false;
+            const nodes = selection.getNodes().filter($isTextNode);
+            const fonts =
+              selection.isCollapsed() || nodes.length === 0
+                ? [$getSelectionStyleValueForProperty(selection, FONT_STYLE_PROP, "serif") || "serif"]
+                : nodes.map((n) => fontIdFromStyle(n.getStyle()));
+            const has = format === "bold" ? supportsBold : supportsItalic;
+            return !fonts.every((f) => has(isKnownFont(f) ? f : "serif")); // true = handled (ignored)
+          });
+        },
+        COMMAND_PRIORITY_HIGH,
       ),
     );
   }, [editor, readSelectionState]);
