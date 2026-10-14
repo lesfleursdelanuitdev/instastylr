@@ -7,7 +7,7 @@ import { $createParagraphNode, $getRoot, type EditorState } from "lexical";
 import { Editor } from "./editor/Editor";
 import { ToolbarPlugin } from "./editor/plugins/ToolbarPlugin";
 import { MarkedListNode } from "./editor/nodes/MarkedListNode";
-import { DividerNode } from "./editor/nodes/DividerNode";
+import { DividerNode, $isDividerNode } from "./editor/nodes/DividerNode";
 import { editorStateToOutput } from "./editor/serialize";
 import { $populatePhotoCaptionTemplate } from "./editor/template";
 import { instagramCount } from "./count";
@@ -61,6 +61,7 @@ const THEME_KEY = "instastylr.theme.v1";
 const LAYOUT_KEY = "instastylr.layout.v2";
 const PLATFORM_KEY = "instastylr.platform.v1";
 const WELCOMED_KEY = "instastylr.welcomed.v1";
+const OPEN_DOC_KEY = "instastylr.openDoc.v1";
 
 function readStored<T extends string>(key: string, allowed: T[], fallback: T): T {
   try {
@@ -70,6 +71,27 @@ function readStored<T extends string>(key: string, allowed: T[], fallback: T): T
     // storage unavailable
   }
   return fallback;
+}
+
+/**
+ * The landing page's buttons link here with ?theme=dark so a first visit opens
+ * in the look its pictures showed. Only a first visit: a stored choice wins.
+ */
+function themeFromLink(): Theme | null {
+  try {
+    const t = new URLSearchParams(window.location.search).get("theme");
+    return t === "dark" || t === "light" ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+function prefersDark(): boolean {
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  } catch {
+    return false;
+  }
 }
 
 export function App() {
@@ -91,7 +113,10 @@ function AppInner() {
   const [activeFont, setActiveFont] = useState("serif");
 
   // ── Shell state ─────────────────────────────────────────
-  const [theme, setTheme] = useState<Theme>(() => readStored(THEME_KEY, ["light", "dark"], "light"));
+  // No stored choice yet → follow the device's light/dark setting.
+  const [theme, setTheme] = useState<Theme>(() =>
+    readStored(THEME_KEY, ["light", "dark"], themeFromLink() ?? (prefersDark() ? "dark" : "light")),
+  );
   const [layout, setLayout] = useState<Layout>(() => readStored(LAYOUT_KEY, ["row", "col"], "row"));
   const [platform, setPlatform] = useState<PlatformId>(() =>
     readStored(PLATFORM_KEY, PLATFORM_IDS, DEFAULT_PLATFORM),
@@ -145,42 +170,85 @@ function AppInner() {
 
   // ── Compute output + stats + dirty on every editor change ─
   useEffect(() => {
+    // Comparing against the saved post means serializing the whole document, so it
+    // waits for a pause in typing instead of running on every keystroke.
+    let dirtyTimer: number | undefined;
+    const checkDirty = (state: EditorState) => {
+      window.clearTimeout(dirtyTimer);
+      dirtyTimer = window.setTimeout(() => {
+        // The ref (not state) keeps this once-registered closure reading the live
+        // baseline without re-subscribing on every save. See docs/STATE_MODEL.md §3.
+        const snap = savedSnapshotRef.current;
+        setDirty(snap !== null && JSON.stringify(state.toJSON()) !== snap);
+      }, 150);
+    };
     const compute = (state: EditorState) => {
       const out = editorStateToOutput(state);
       setOutput(out);
       setChars(out ? instagramCount(out) : 0);
-      const el = editor.getRootElement();
-      const raw = el ? el.innerText : "";
-      const trimmed = raw.replace(/[\n\s]+$/, "");
-      setWords(trimmed ? trimmed.trim().split(/\s+/).length : 0);
-      setLines(
-        trimmed ? raw.split("\n").filter((l, i, a) => i < a.length - 1 || l.trim() !== "").length : 1,
+      // Words are the words people wrote (dividers aren't words); lines are the
+      // lines of what gets copied. Both read the document, not the page, so no
+      // layout is forced on each keystroke.
+      const written = state.read(() =>
+        $getRoot()
+          .getChildren()
+          .filter((n) => !$isDividerNode(n))
+          .map((n) => n.getTextContent())
+          .join("\n"),
       );
-      // Identity/dirty: serialize once and compare to the last-saved snapshot.
-      // The ref (not state) keeps this once-registered closure reading the live
-      // baseline without re-subscribing on every save. See docs/STATE_MODEL.md §3.
-      setNonEmpty(trimmed.length > 0);
-      const snap = savedSnapshotRef.current;
-      setDirty(snap !== null && JSON.stringify(state.toJSON()) !== snap);
+      const trimmed = written.trim();
+      setWords(trimmed ? trimmed.split(/\s+/).length : 0);
+      setLines(out ? out.split("\n").length : 0);
+      setNonEmpty(out.length > 0);
+      checkDirty(state);
     };
     compute(editor.getEditorState());
-    return editor.registerUpdateListener(({ editorState }) => compute(editorState));
+    const unregister = editor.registerUpdateListener(({ editorState, prevEditorState, dirtyElements, dirtyLeaves }) => {
+      // Moving the caret or selecting text changes nothing that's counted or copied.
+      if (dirtyElements.size === 0 && dirtyLeaves.size === 0 && prevEditorState._nodeMap === editorState._nodeMap) return;
+      compute(editorState);
+    });
+    return () => {
+      unregister();
+      window.clearTimeout(dirtyTimer);
+    };
   }, [editor]);
 
   // ── First-run: seed template, load saves, maybe welcome ─
   useEffect(() => {
     seedTemplateOnce();
-    setSaves(loadSaves());
+    const all = loadSaves();
+    setSaves(all);
     try {
       if (!window.localStorage.getItem(WELCOMED_KEY)) setWelcomeOpen(true);
     } catch {
       // ignore
     }
-  }, []);
+    // Reopened after a reload: rebind to the saved post the draft belongs to. The
+    // draft itself is restored by PersistencePlugin, whose effect runs first.
+    try {
+      const openId = window.localStorage.getItem(OPEN_DOC_KEY);
+      const post = openId ? all.find((p) => p.id === openId && p.kind === "post") : undefined;
+      if (post) {
+        setDocId(post.id);
+        setDocName(post.name);
+        savedSnapshotRef.current = post.state;
+        setDirty(JSON.stringify(editor.getEditorState().toJSON()) !== post.state);
+      } else if (openId) {
+        window.localStorage.removeItem(OPEN_DOC_KEY); // that post was deleted
+      }
+    } catch {
+      // ignore
+    }
+  }, [editor]);
 
   // ── Reflect theme / layout / collapse onto <html> ───────
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // Keep the browser's own chrome (status bar, address bar) in step with ours.
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#010409" : "#0F172A");
     try {
       window.localStorage.setItem(THEME_KEY, theme);
     } catch {
@@ -282,6 +350,14 @@ function AppInner() {
     setDocName(name);
     savedSnapshotRef.current = snapshot;
     setDirty(false);
+    // Remember which saved post the editor is, so a reload (the draft comes back
+    // too) keeps offering Update instead of saving a second copy.
+    try {
+      if (id) window.localStorage.setItem(OPEN_DOC_KEY, id);
+      else window.localStorage.removeItem(OPEN_DOC_KEY);
+    } catch {
+      // ignore
+    }
   }, []);
 
   // Load post content into the editor. Returns false if stored state was corrupt.
@@ -593,7 +669,12 @@ function AppInner() {
 
         <div id="output-panel" style={outputPanelStyle}>
           <div id="output-header">
-            <button id="toggle-btn" onClick={() => setOutputOpen((o) => !o)}>
+            <button
+              id="toggle-btn"
+              aria-expanded={outputOpen}
+              aria-controls="output-body"
+              onClick={() => setOutputOpen((o) => !o)}
+            >
               <svg id="chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: chevronTransform }}><polyline points="6 9 12 15 18 9" /></svg>
               <span className="output-label">Output</span>
             </button>

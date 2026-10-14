@@ -43,7 +43,10 @@ export function SettingsPanel({
     if (open) {
       setRender(true);
       setDismissed(loadDismissed());
-      const raf = requestAnimationFrame(() => setShown(true));
+      // two frames, so it is painted parked before it slides (see FontPanel)
+      let raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => setShown(true));
+      });
       return () => cancelAnimationFrame(raf);
     }
     setShown(false);
@@ -71,7 +74,7 @@ export function SettingsPanel({
       <div id="settings-panel" className={shown ? "open" : ""} role="dialog" aria-label="Settings">
         <div className="panel-header">
           <span className="panel-title">Settings</span>
-          <button className="btn-close-panel" title="Close" onClick={onClose}>
+          <button className="btn-close-panel" title="Close" aria-label="Close" onClick={onClose}>
             {CloseIcon}
           </button>
         </div>

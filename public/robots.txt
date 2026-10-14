@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://instastylr.lesfleursdelanuit.com/sitemap.xml

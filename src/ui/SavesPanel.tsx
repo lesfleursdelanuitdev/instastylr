@@ -45,9 +45,9 @@ export function SavesPanel({
   useEffect(() => {
     if (open) {
       setRender(true);
-      const raf = requestAnimationFrame(() => {
-        setShown(true);
-        inputRef.current?.focus();
+      // two frames, so it is painted parked before it slides (see FontPanel)
+      let raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => setShown(true));
       });
       return () => cancelAnimationFrame(raf);
     }
@@ -55,6 +55,12 @@ export function SavesPanel({
     const t = window.setTimeout(() => setRender(false), 280);
     return () => window.clearTimeout(t);
   }, [open]);
+
+  // The panel is visibility:hidden until it has the "open" class, and a hidden
+  // field can't take focus — so focus once that class has been committed.
+  useEffect(() => {
+    if (shown) inputRef.current?.focus();
+  }, [shown]);
 
   const doSave = () => {
     onSave(name.trim() || "Untitled post");
@@ -74,7 +80,7 @@ export function SavesPanel({
       <div id="saves-panel" className={shown ? "open" : ""}>
         <div id="saves-panel-header">
           <span id="saves-panel-title">Saved Posts</span>
-          <button id="btn-close-panel" title="Close" onClick={onClose}>
+          <button id="btn-close-panel" title="Close" aria-label="Close" onClick={onClose}>
             {CloseIcon}
           </button>
         </div>
@@ -129,7 +135,9 @@ export function SavesPanel({
                     {item.name}
                     {item.id === docId && <span className="save-item-badge">Editing</span>}
                   </div>
-                  <div className="save-item-date">{formatDate(item.createdAt)}</div>
+                  <div className="save-item-date">
+                    {item.kind === "template" ? "Template" : formatDate(item.createdAt)}
+                  </div>
                 </div>
                 <div className="save-item-actions">
                   <button
@@ -144,6 +152,7 @@ export function SavesPanel({
                   <button
                     className="btn-del-save"
                     title="Delete"
+                    aria-label={`Delete “${item.name}”`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete(item.id);

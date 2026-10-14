@@ -5,6 +5,8 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { PersistencePlugin } from "./plugins/PersistencePlugin";
 import { BulletMenuPlugin } from "./plugins/BulletMenuPlugin";
+import { ListIndentPlugin } from "./plugins/ListIndentPlugin";
+import { EscapePlugin } from "./plugins/EscapePlugin";
 
 /**
  * The contenteditable surface plus its Lexical plugins. The surrounding
@@ -23,6 +25,8 @@ export function Editor() {
       />
       <HistoryPlugin />
       <ListPlugin />
+      <ListIndentPlugin />
+      <EscapePlugin />
       <PersistencePlugin />
       <BulletMenuPlugin />
     </>

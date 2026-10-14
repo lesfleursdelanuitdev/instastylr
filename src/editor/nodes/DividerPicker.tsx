@@ -288,7 +288,7 @@ export function DividerPicker({ line, recipe, wrapper, onApply }: Props) {
   };
 
   return (
-    <div className="i-divider-picker" contentEditable={false}>
+    <div className="i-divider-picker">
       <div className="i-divider-title">Divider</div>
 
       <div className="divider-tabs" role="tablist">

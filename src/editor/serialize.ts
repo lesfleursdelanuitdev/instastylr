@@ -61,21 +61,41 @@ function nodeToString(node: LexicalNode): string {
     });
   }
   if ($isListNode(node)) return listToString(node, 0);
-  // A divider collapses to its stored line with one blank line above and below.
-  // Top-level blocks are joined by a single "\n", so wrapping the line in "\n…\n"
-  // yields the blank line on each side (e.g. "above\n\n━━━\n\nbelow").
-  if ($isDividerNode(node)) return `\n${node.getLine()}\n`;
+  if ($isDividerNode(node)) return node.getLine();
   if ($isElementNode(node)) {
     return node.getChildren().map(nodeToString).join("");
   }
   return node.getTextContent();
 }
 
+/**
+ * Top-level blocks (paragraphs, lists) become lines; inline content within a
+ * block is concatenated. What gets copied should be what the platform shows:
+ *  - a divider has exactly one blank line above and below it (empty paragraphs
+ *    next to it don't stack up into two or three);
+ *  - nothing blank at the very start or end: platforms trim it, but it would
+ *    still count against the character limit.
+ * Blank lines the user puts between ordinary paragraphs are kept.
+ */
 export function editorStateToOutput(editorState: EditorState): string {
   return editorState.read(() => {
-    const blocks = $getRoot().getChildren();
-    // Top-level blocks (paragraphs, lists) are separated by newlines; inline
-    // content within a block is concatenated.
-    return blocks.map(nodeToString).join("\n");
+    const out: string[] = [];
+    let afterDivider = false;
+    for (const block of $getRoot().getChildren()) {
+      const text = nodeToString(block);
+      if ($isDividerNode(block)) {
+        while (out.length && out[out.length - 1] === "") out.pop();
+        if (out.length) out.push("");
+        out.push(text, "");
+        afterDivider = true;
+        continue;
+      }
+      if (afterDivider && text === "") continue; // the divider already left its blank line
+      afterDivider = false;
+      out.push(...text.split("\n"));
+    }
+    while (out.length && out[0] === "") out.shift();
+    while (out.length && out[out.length - 1] === "") out.pop();
+    return out.join("\n");
   });
 }

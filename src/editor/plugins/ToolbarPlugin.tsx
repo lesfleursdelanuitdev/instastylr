@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
+  $getRoot,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
+  COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   FORMAT_TEXT_COMMAND,
   REDO_COMMAND,
@@ -22,7 +24,9 @@ import {
 import { $createDividerNode } from "../nodes/DividerNode";
 import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
-import { UI_FONTS } from "../../fonts/uiFonts";
+import { FontMenu } from "../../ui/FontMenu";
+import { FontPanel, type PanelSample } from "../../ui/FontPanel";
+import { loadRecentFonts, recordFontUse } from "../../fonts/recent";
 import { MoreMenu } from "./MoreMenu";
 
 type ListState = "bullet" | "number" | null;
@@ -93,6 +97,25 @@ export function ToolbarPlugin({
   const [italicAvail, setItalicAvail] = useState(true);
   const [fontId, setFontId] = useState("serif");
   const [listType, setListType] = useState<ListState>(null);
+  const [fontPanelOpen, setFontPanelOpen] = useState(false);
+  const [panelSample, setPanelSample] = useState<PanelSample | null>(null);
+  const [recent, setRecent] = useState<string[]>(() => loadRecentFonts());
+  const openFontPanel = () => {
+    // The panel previews whatever is selected (one line, kept short), else a stock sample.
+    const raw = editor.getEditorState().read(() => {
+      const sel = $getSelection();
+      return $isRangeSelection(sel) && !sel.isCollapsed() ? sel.getTextContent() : "";
+    });
+    const text = raw.replace(/\s+/g, " ").trim();
+    setPanelSample(
+      text ? { text: text.length > 48 ? `${text.slice(0, 47)}…` : text, bold: bold === "on", italic: italic === "on" } : null,
+    );
+    setFontPanelOpen(true);
+  };
+  const closeFontPanel = useCallback(() => {
+    setFontPanelOpen(false);
+    editor.focus();
+  }, [editor]);
 
   const readSelectionState = useCallback(() => {
     const selection = $getSelection();
@@ -138,6 +161,27 @@ export function ToolbarPlugin({
         },
         COMMAND_PRIORITY_LOW,
       ),
+      // The B and I buttons go grey in a font with no bold/italic, but the keyboard
+      // shortcuts send the same command. Swallow it there, or a hidden bold would be
+      // stored and surface later when the text is switched to a font that has one.
+      editor.registerCommand(
+        FORMAT_TEXT_COMMAND,
+        (format) => {
+          if (format !== "bold" && format !== "italic") return false;
+          return editor.getEditorState().read(() => {
+            const selection = $getSelection();
+            if (!$isRangeSelection(selection)) return false;
+            const nodes = selection.getNodes().filter($isTextNode);
+            const fonts =
+              selection.isCollapsed() || nodes.length === 0
+                ? [$getSelectionStyleValueForProperty(selection, FONT_STYLE_PROP, "serif") || "serif"]
+                : nodes.map((n) => fontIdFromStyle(n.getStyle()));
+            const has = format === "bold" ? supportsBold : supportsItalic;
+            return !fonts.every((f) => has(isKnownFont(f) ? f : "serif")); // true = handled (ignored)
+          });
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
     );
   }, [editor, readSelectionState]);
 
@@ -150,7 +194,14 @@ export function ToolbarPlugin({
     let strippedItalic = false;
 
     editor.update(() => {
-      const selection = $getSelection();
+      let selection = $getSelection();
+      // No caret yet (the editor was never focused, e.g. straight from the page
+      // load to the font panel): put one at the end, where typing will start,
+      // so the font takes effect instead of silently doing nothing.
+      if (!$isRangeSelection(selection)) {
+        $getRoot().selectEnd();
+        selection = $getSelection();
+      }
       if (!$isRangeSelection(selection)) return;
       $patchStyleText(selection, { [FONT_STYLE_PROP]: nextFontId === "serif" ? null : nextFontId });
 
@@ -177,6 +228,7 @@ export function ToolbarPlugin({
     });
 
     setFontId(nextFontId);
+    setRecent(recordFontUse(nextFontId));
     editor.focus();
     if (strippedBold || strippedItalic) onStripFormats(nextFontId, strippedBold, strippedItalic);
   };
@@ -206,10 +258,10 @@ export function ToolbarPlugin({
 
   return (
     <div id="toolbar" role="toolbar" aria-label="Formatting">
-      <button className="tbtn" id="btn-undo" title="Undo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}>
+      <button className="tbtn" id="btn-undo" title="Undo" aria-label="Undo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}>
         {I.undo}
       </button>
-      <button className="tbtn" id="btn-redo" title="Redo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}>
+      <button className="tbtn" id="btn-redo" title="Redo" aria-label="Redo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}>
         {I.redo}
       </button>
       <div className="sep" />
@@ -217,6 +269,7 @@ export function ToolbarPlugin({
       <button
         className={`tbtn${bold === "on" ? " active" : ""}${bold === "mixed" ? " mixed" : ""}`}
         id="btn-bold"
+        aria-label="Bold"
         title={boldAvail ? "Bold" : "Bold isn’t available in this font"}
         aria-pressed={bold === "on" ? true : bold === "mixed" ? "mixed" : false}
         disabled={!boldAvail}
@@ -228,6 +281,7 @@ export function ToolbarPlugin({
       <button
         className={`tbtn${italic === "on" ? " active" : ""}${italic === "mixed" ? " mixed" : ""}`}
         id="btn-italic"
+        aria-label="Italic"
         title={italicAvail ? "Italic" : "Italic isn’t available in this font"}
         aria-pressed={italic === "on" ? true : italic === "mixed" ? "mixed" : false}
         disabled={!italicAvail}
@@ -238,24 +292,23 @@ export function ToolbarPlugin({
       </button>
       <div className="sep" />
 
-      <select
-        id="font-select"
-        title="Font style"
-        className={fontId === MIXED_FONT ? "mixed" : ""}
-        value={fontId === MIXED_FONT ? "__mixed" : fontId}
-        onChange={(e) => applyFont(e.target.value)}
-      >
-        {fontId === MIXED_FONT && (
-          <option value="__mixed" disabled>
-            Mixed
-          </option>
-        )}
-        {UI_FONTS.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.select}
-          </option>
-        ))}
-      </select>
+      <FontMenu
+        fontId={fontId === MIXED_FONT ? null : fontId}
+        recent={recent}
+        onPick={applyFont}
+        onMore={openFontPanel}
+      />
+      <FontPanel
+        open={fontPanelOpen}
+        fontId={fontId === MIXED_FONT ? null : fontId}
+        sample={panelSample}
+        recent={recent}
+        onPick={(id) => {
+          setFontPanelOpen(false);
+          applyFont(id);
+        }}
+        onClose={closeFontPanel}
+      />
 
       <MoreMenu
         listType={listType}
@@ -265,6 +318,8 @@ export function ToolbarPlugin({
         onToggleBullet={toggleBullet}
         onToggleNumber={toggleNumber}
         onInsertDivider={insertDivider}
+        resetIcon={I.reset}
+        onReset={onReset}
       />
 
       <div id="toolbar-right">
@@ -278,7 +333,7 @@ export function ToolbarPlugin({
           {layout === "col" ? I.cols : I.rows}
         </button>
         <div className="sep" />
-        <button className="tbtn" id="btn-reset" title="Reset to start" onClick={onReset}>
+        <button className="tbtn" id="btn-reset" title="Reset to start" aria-label="Reset to start" onClick={onReset}>
           {I.reset}
         </button>
       </div>

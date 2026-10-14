@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:5173", // the app lives at /app/, the landing page at /
     launchOptions: { args: ["--no-sandbox"] }, // headless server environment
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

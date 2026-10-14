@@ -37,18 +37,32 @@ export function PersistencePlugin() {
     }
   }, [editor]);
 
-  // Debounced autosave on every change.
+  // Debounced autosave on every change, plus an immediate save when the page is
+  // being left (reload, tab closed, app switched away on a phone), so the last
+  // keystrokes before leaving aren't lost to the debounce.
   useEffect(() => {
-    return editor.registerUpdateListener(({ editorState }) => {
+    const write = () => {
       window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => {
-        try {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(editorState.toJSON()));
-        } catch {
-          // Ignore quota/availability errors — autosave is best-effort.
-        }
-      }, SAVE_DEBOUNCE_MS);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(editor.getEditorState().toJSON()));
+      } catch {
+        // Ignore quota/availability errors — autosave is best-effort.
+      }
+    };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") write();
+    };
+    window.addEventListener("pagehide", write);
+    document.addEventListener("visibilitychange", onHide);
+    const unregister = editor.registerUpdateListener(() => {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(write, SAVE_DEBOUNCE_MS);
     });
+    return () => {
+      unregister();
+      window.removeEventListener("pagehide", write);
+      document.removeEventListener("visibilitychange", onHide);
+    };
   }, [editor]);
 
   return null;

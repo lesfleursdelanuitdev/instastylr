@@ -34,7 +34,10 @@ export function SideMenu({
   useEffect(() => {
     if (open) {
       setRender(true);
-      const raf = requestAnimationFrame(() => setShown(true));
+      // two frames, so it is painted parked before it slides (see FontPanel)
+      let raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => setShown(true));
+      });
       return () => cancelAnimationFrame(raf);
     }
     setShown(false);
@@ -53,6 +56,7 @@ export function SideMenu({
     { key: "saves", icon: "💾", label: "Saved posts", sub: "Open, save, and manage", onClick: go(onOpenSaves) },
     { key: "settings", icon: "⚙️", label: "Settings", sub: "Appearance and tips", onClick: go(onOpenSettings) },
     { key: "help", icon: "💡", label: "How it works", sub: "Replay the intro", onClick: go(onShowWelcome) },
+    { key: "home", icon: "🏠", label: "Home page", sub: "What instastylr does", onClick: () => window.location.assign("/") },
   ];
 
   if (!render) return null;
@@ -63,7 +67,7 @@ export function SideMenu({
       <div id="side-menu" className={shown ? "open" : ""} role="dialog" aria-label="Menu">
         <div className="panel-header">
           <span className="panel-title">Menu</span>
-          <button className="btn-close-panel" title="Close" onClick={onClose}>
+          <button className="btn-close-panel" title="Close" aria-label="Close" onClick={onClose}>
             {CloseIcon}
           </button>
         </div>

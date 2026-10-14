@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Word-processor-style Unicode caption styler for Instagram and other plain-text platforms",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
