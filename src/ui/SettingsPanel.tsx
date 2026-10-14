@@ -71,7 +71,7 @@ export function SettingsPanel({
       <div id="settings-panel" className={shown ? "open" : ""} role="dialog" aria-label="Settings">
         <div className="panel-header">
           <span className="panel-title">Settings</span>
-          <button className="btn-close-panel" title="Close" onClick={onClose}>
+          <button className="btn-close-panel" title="Close" aria-label="Close" onClick={onClose}>
             {CloseIcon}
           </button>
         </div>

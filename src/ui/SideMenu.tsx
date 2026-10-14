@@ -63,7 +63,7 @@ export function SideMenu({
       <div id="side-menu" className={shown ? "open" : ""} role="dialog" aria-label="Menu">
         <div className="panel-header">
           <span className="panel-title">Menu</span>
-          <button className="btn-close-panel" title="Close" onClick={onClose}>
+          <button className="btn-close-panel" title="Close" aria-label="Close" onClick={onClose}>
             {CloseIcon}
           </button>
         </div>

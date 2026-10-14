@@ -72,6 +72,14 @@ function readStored<T extends string>(key: string, allowed: T[], fallback: T): T
   return fallback;
 }
 
+function prefersDark(): boolean {
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  } catch {
+    return false;
+  }
+}
+
 export function App() {
   return (
     <LexicalComposer initialConfig={initialConfig}>
@@ -91,7 +99,10 @@ function AppInner() {
   const [activeFont, setActiveFont] = useState("serif");
 
   // ── Shell state ─────────────────────────────────────────
-  const [theme, setTheme] = useState<Theme>(() => readStored(THEME_KEY, ["light", "dark"], "light"));
+  // No stored choice yet → follow the device's light/dark setting.
+  const [theme, setTheme] = useState<Theme>(() =>
+    readStored(THEME_KEY, ["light", "dark"], prefersDark() ? "dark" : "light"),
+  );
   const [layout, setLayout] = useState<Layout>(() => readStored(LAYOUT_KEY, ["row", "col"], "row"));
   const [platform, setPlatform] = useState<PlatformId>(() =>
     readStored(PLATFORM_KEY, PLATFORM_IDS, DEFAULT_PLATFORM),
@@ -181,6 +192,10 @@ function AppInner() {
   // ── Reflect theme / layout / collapse onto <html> ───────
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // Keep the browser's own chrome (status bar, address bar) in step with ours.
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#010409" : "#0F172A");
     try {
       window.localStorage.setItem(THEME_KEY, theme);
     } catch {
@@ -593,7 +608,12 @@ function AppInner() {
 
         <div id="output-panel" style={outputPanelStyle}>
           <div id="output-header">
-            <button id="toggle-btn" onClick={() => setOutputOpen((o) => !o)}>
+            <button
+              id="toggle-btn"
+              aria-expanded={outputOpen}
+              aria-controls="output-body"
+              onClick={() => setOutputOpen((o) => !o)}
+            >
               <svg id="chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: chevronTransform }}><polyline points="6 9 12 15 18 9" /></svg>
               <span className="output-label">Output</span>
             </button>

@@ -206,10 +206,10 @@ export function ToolbarPlugin({
 
   return (
     <div id="toolbar" role="toolbar" aria-label="Formatting">
-      <button className="tbtn" id="btn-undo" title="Undo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}>
+      <button className="tbtn" id="btn-undo" title="Undo" aria-label="Undo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}>
         {I.undo}
       </button>
-      <button className="tbtn" id="btn-redo" title="Redo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}>
+      <button className="tbtn" id="btn-redo" title="Redo" aria-label="Redo" onMouseDown={noFocusSteal} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}>
         {I.redo}
       </button>
       <div className="sep" />
@@ -217,6 +217,7 @@ export function ToolbarPlugin({
       <button
         className={`tbtn${bold === "on" ? " active" : ""}${bold === "mixed" ? " mixed" : ""}`}
         id="btn-bold"
+        aria-label="Bold"
         title={boldAvail ? "Bold" : "Bold isn’t available in this font"}
         aria-pressed={bold === "on" ? true : bold === "mixed" ? "mixed" : false}
         disabled={!boldAvail}
@@ -228,6 +229,7 @@ export function ToolbarPlugin({
       <button
         className={`tbtn${italic === "on" ? " active" : ""}${italic === "mixed" ? " mixed" : ""}`}
         id="btn-italic"
+        aria-label="Italic"
         title={italicAvail ? "Italic" : "Italic isn’t available in this font"}
         aria-pressed={italic === "on" ? true : italic === "mixed" ? "mixed" : false}
         disabled={!italicAvail}
@@ -241,6 +243,7 @@ export function ToolbarPlugin({
       <select
         id="font-select"
         title="Font style"
+        aria-label="Font style"
         className={fontId === MIXED_FONT ? "mixed" : ""}
         value={fontId === MIXED_FONT ? "__mixed" : fontId}
         onChange={(e) => applyFont(e.target.value)}
@@ -265,6 +268,8 @@ export function ToolbarPlugin({
         onToggleBullet={toggleBullet}
         onToggleNumber={toggleNumber}
         onInsertDivider={insertDivider}
+        resetIcon={I.reset}
+        onReset={onReset}
       />
 
       <div id="toolbar-right">
@@ -278,7 +283,7 @@ export function ToolbarPlugin({
           {layout === "col" ? I.cols : I.rows}
         </button>
         <div className="sep" />
-        <button className="tbtn" id="btn-reset" title="Reset to start" onClick={onReset}>
+        <button className="tbtn" id="btn-reset" title="Reset to start" aria-label="Reset to start" onClick={onReset}>
           {I.reset}
         </button>
       </div>

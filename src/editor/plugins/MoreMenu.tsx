@@ -26,6 +26,8 @@ export function MoreMenu({
   onToggleBullet,
   onToggleNumber,
   onInsertDivider,
+  resetIcon,
+  onReset,
 }: {
   listType: ListState;
   ulIcon: ReactNode;
@@ -34,6 +36,8 @@ export function MoreMenu({
   onToggleBullet: () => void;
   onToggleNumber: () => void;
   onInsertDivider: () => void;
+  resetIcon: ReactNode;
+  onReset: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -63,6 +67,7 @@ export function MoreMenu({
         className={`tbtn${open || inList ? " active" : ""}`}
         id="btn-more"
         title="More"
+        aria-label="More formatting"
         aria-haspopup="menu"
         aria-expanded={open}
         onMouseDown={(e) => e.preventDefault()}
@@ -75,6 +80,7 @@ export function MoreMenu({
           className={`tbtn${listType === "bullet" ? " active" : ""}`}
           id="btn-ul"
           title="Bulleted list"
+          aria-label="Bulleted list"
           aria-pressed={listType === "bullet"}
           onMouseDown={(e) => e.preventDefault()}
           onClick={onToggleBullet}
@@ -85,6 +91,7 @@ export function MoreMenu({
           className={`tbtn${listType === "number" ? " active" : ""}`}
           id="btn-ol"
           title="Numbered list"
+          aria-label="Numbered list"
           aria-pressed={listType === "number"}
           onMouseDown={(e) => e.preventDefault()}
           onClick={onToggleNumber}
@@ -95,6 +102,7 @@ export function MoreMenu({
           className="tbtn"
           id="btn-divider"
           title="Insert divider"
+          aria-label="Insert divider"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             onInsertDivider();
@@ -104,6 +112,20 @@ export function MoreMenu({
           {dividerIcon}
         </button>
         <EmojiPicker />
+        {/* Phones only (styles.css): the toolbar's own Reset is folded in here so
+            the bar stays on one row. */}
+        <button
+          className="tbtn"
+          id="btn-reset-more"
+          title="Reset to start"
+          aria-label="Reset to start"
+          onClick={() => {
+            setOpen(false);
+            onReset();
+          }}
+        >
+          {resetIcon}
+        </button>
       </div>
     </div>
   );
