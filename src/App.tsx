@@ -578,6 +578,7 @@ function AppInner() {
   return (
     <div id="app">
       {/* ── App header ── */}
+      <h1 className="sr-only">InstaStylr caption editor</h1>
       <header id="app-header">
         <div id="brand-wrap">
           <span id="brand">

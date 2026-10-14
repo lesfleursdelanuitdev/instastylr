@@ -20,6 +20,7 @@ export default defineConfig({
         learnLists: page("./learn/lists/index.html"),
         learnDividers: page("./learn/dividers/index.html"),
         learnSaving: page("./learn/saving/index.html"),
+        privacy: page("./privacy/index.html"),
       },
     },
   },

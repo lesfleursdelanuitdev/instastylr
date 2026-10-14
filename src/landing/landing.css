@@ -234,6 +234,7 @@ html.js .facts.in li { opacity: 1; transform: none; }
 }
 .foot a { padding: 12px 0; transition: color .3s; }
 .foot a:hover, .foot a:focus-visible { color: #fff; }
+.foot .made-by { padding: 12px 0; color: #6f6896; }
 
 /* ═══ The mock app (the app's own palette) ═══ */
 .mock-slot { position: relative; }

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-page="privacy">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#050406" />
+    <meta name="color-scheme" content="dark" />
+    <title>Privacy · InstaStylr</title>
+    <meta name="description" content="What InstaStylr keeps: your posts stay in your browser, there are no accounts or cookies, and page views are counted without identifying you." />
+    <link rel="canonical" href="https://instastylr.lesfleursdelanuit.com/privacy/" />
+    <meta property="og:title" content="Privacy · InstaStylr" />
+    <meta property="og:description" content="Step-by-step guides to styling Instagram captions: bold and italic text, fonts, bullet points, divider lines, character limits and saving captions." />
+    <meta property="og:url" content="https://instastylr.lesfleursdelanuit.com/privacy/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="InstaStylr" />
+    <meta property="og:image" content="https://instastylr.lesfleursdelanuit.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="InstaStylr: captions that keep their style. A caption shown plain, then with bold, a divider, flower bullets and italic." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/src/landing/fonts/bodoni-moda-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/landing/fonts/bodoni-moda-latin-opsz-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <script type="module" src="/src/landing/tutorial.ts"></script>
+  </head>
+  <body>
+    <canvas class="sky" aria-hidden="true"></canvas>
+    <header class="nav">
+      <a class="brand" href="/"><svg class="dahlia" width="26" height="26" aria-hidden="true"></svg>InstaStylr</a>
+      <nav class="links" aria-label="Site">
+        <a class="back" href="/learn/">Tutorials</a>
+        <a class="pill" href="/app/?theme=dark&amp;from=privacy-nav">Open the app</a>
+      </nav>
+    </header>
+    <main class="tut">
+      <header class="tut-head">
+        <h1>Privacy, <em>plainly</em></h1>
+        <p class="lede">InstaStylr has no accounts, no cookies and no advertising. Here is everything it keeps, and where.</p>
+      </header>
+      <section class="step">
+        <div>
+          <h2>Your posts stay in your browser</h2>
+          <p>What you write, your saved posts, your settings and your recent fonts are stored in your own browser on your own device (its "local storage"). They are never sent to a server. Clearing your browser's data for this site deletes them, and they don't follow you to another device.</p>
+        </div>
+      </section>
+      <section class="step">
+        <div>
+          <h2>Counting visits</h2>
+          <p>Each page asks the server for a tiny image tagged with the page's name, and the app's buttons say which one was pressed. That tells me how many people read each page and which button led them to the app. No cookie is set and no profile is built; the counts are read from the server's log.</p>
+        </div>
+      </section>
+      <section class="step">
+        <div>
+          <h2>The server's log</h2>
+          <p>Like almost every website, the web server writes a standard line for each request: the address the request came from, the time, the page and the browser's name. These logs are deleted after 14 days. They are not shared or sold.</p>
+        </div>
+      </section>
+      <section class="step">
+        <div>
+          <h2>No third parties</h2>
+          <p>Fonts, images and code are all served from this site. Nothing is loaded from Google, Facebook or any analytics or ad network.</p>
+        </div>
+      </section>
+      <section class="step">
+        <div>
+          <h2>Who runs it</h2>
+          <p>InstaStylr is made by Monica Gonsalves (Les Fleurs de la Nuit). For questions, use the contact form at <a href="https://monicagonsalves.com/">monicagonsalves.com</a>.</p>
+        </div>
+      </section>
+    </main>
+    <footer class="foot">
+      <a href="/">Home</a>
+      <a href="/learn/">Tutorials</a>
+      <a href="https://creative.lesfleursdelanuit.com/">Creative tools</a>
+      <a href="https://monicagonsalves.com/engineering/instastylr">Case study</a>
+      <a href="https://github.com/lesfleursdelanuitdev/instastylr">Source</a>
+      <a href="/privacy/">Privacy</a>
+      <span class="made-by">Made by Monica Gonsalves</span>
+    </footer>
+  </body>
+</html>
