@@ -10,7 +10,7 @@ import { test, expect, type Page } from "@playwright/test";
  * `start()` dismisses the modal and returns the focused editor.
  */
 async function start(page: Page) {
-  await page.goto("/");
+  await page.goto("/app/");
   await expect(page.locator("#brand")).toContainText("instastylr");
   // First-run welcome modal — dismiss it before touching the editor.
   await page.locator("#btn-welcome-skip").click({ timeout: 5000 }).catch(() => {});
@@ -20,7 +20,7 @@ async function start(page: Page) {
 }
 
 test("loads blank with the welcome modal and an empty projection", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app/");
   await expect(page.locator("#brand")).toContainText("instastylr");
   await expect(page.locator("#welcome-modal")).toBeVisible();
 
@@ -353,7 +353,7 @@ test("bullet and divider panels resize by dragging or with the arrow keys, and r
 });
 
 test("a font picked before the editor was ever focused still applies and shows everywhere", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app/");
   await page.locator("#btn-welcome-skip").click();
   // Straight to the panel, never having clicked into the editor.
   await page.locator("#font-select").click();
@@ -365,7 +365,7 @@ test("a font picked before the editor was ever focused still applies and shows e
   await expect(page.locator("#output-body")).toHaveText("Ⱨł");
 
   // Same through the menu, on a fresh page.
-  await page.goto("/");
+  await page.goto("/app/");
   await page.locator("#font-select").click();
   await page.locator('#font-menu [data-font="script"]').click();
   await expect(page.locator("#font-select")).toContainText("Script");

@@ -56,6 +56,7 @@ export function SideMenu({
     { key: "saves", icon: "💾", label: "Saved posts", sub: "Open, save, and manage", onClick: go(onOpenSaves) },
     { key: "settings", icon: "⚙️", label: "Settings", sub: "Appearance and tips", onClick: go(onOpenSettings) },
     { key: "help", icon: "💡", label: "How it works", sub: "Replay the intro", onClick: go(onShowWelcome) },
+    { key: "home", icon: "🏠", label: "Home page", sub: "What instastylr does", onClick: () => window.location.assign("/") },
   ];
 
   if (!render) return null;
