@@ -43,7 +43,10 @@ export function SettingsPanel({
     if (open) {
       setRender(true);
       setDismissed(loadDismissed());
-      const raf = requestAnimationFrame(() => setShown(true));
+      // two frames, so it is painted parked before it slides (see FontPanel)
+      let raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => setShown(true));
+      });
       return () => cancelAnimationFrame(raf);
     }
     setShown(false);

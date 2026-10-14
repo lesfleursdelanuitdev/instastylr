@@ -406,20 +406,103 @@ body {
 
 .sep { width: 1px; height: 20px; background: var(--sep-clr); margin: 0 3px; flex-shrink: 0; transition: background 0.2s; }
 
-/* Font select */
+/* Font control: a button showing the current font + its short menu */
+#font-menu-wrap { position: relative; display: flex; min-width: 0; }
 #font-select {
-  appearance: none; -webkit-appearance: none;
+  display: flex; align-items: center; gap: 8px;
   background: var(--sel-bg); border: 1px solid var(--sel-border);
-  color: #E2E8F0; padding: 6px 28px 6px 10px;
-  border-radius: 7px; font-size: 13px; font-family: inherit;
-  cursor: pointer; outline: none; min-width: 136px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 8px center;
+  color: #E2E8F0; height: 32px; padding: 0 9px 0 10px; min-width: 150px;
+  border-radius: 8px; font-size: 13px; font-family: inherit; text-align: left;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   transition: border-color 0.12s, background-color 0.2s;
 }
-#font-select:hover { border-color: var(--accent); }
-#font-select option { background: #1E293B; color: #E2E8F0; }
-#font-select optgroup { background: #1E293B; color: #94A3B8; font-style: normal; }
+#font-select:hover, #font-select[aria-expanded="true"] { border-color: var(--accent-soft); }
+#font-select > svg { color: #94A3B8; flex-shrink: 0; transition: transform 0.15s; }
+#font-select[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.font-select-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.font-preview { flex-shrink: 0; min-width: 1.9em; color: #C7D2FE; white-space: nowrap; }
+
+#font-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+  min-width: 100%; width: max-content; max-width: calc(100vw - 16px);
+  background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
+  border-radius: 10px; box-shadow: var(--shadow-pop); padding: 5px;
+  display: flex; flex-direction: column; gap: 1px;
+  animation: popIn 0.14s ease-out both;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.font-option {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; border-radius: 7px; cursor: pointer;
+  color: #E2E8F0; font-size: 13px; font-family: inherit; text-align: left;
+  min-height: 36px; padding: 0 8px 0 10px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+}
+.font-option:hover, .font-option:focus-visible { background: var(--tbtn-hover); }
+.font-option[aria-selected="true"] { color: #fff; }
+.font-option-label { flex: 1; white-space: nowrap; }
+.font-option-check { width: 14px; display: flex; justify-content: center; color: var(--accent-soft); flex-shrink: 0; }
+.font-menu-sep { height: 1px; background: var(--sep-clr); margin: 4px 2px; }
+#btn-more-fonts { color: #C7D2FE; font-weight: 600; }
+#btn-more-fonts .font-option-check { color: #94A3B8; }
+
+/* ── Font panel (off-canvas, slides in from the left) ── */
+#font-panel {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: min(400px, 100vw);
+  background: var(--app-bg);
+  border-right: 1px solid var(--out-border);
+  z-index: 101;
+  display: flex; flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(.32,.72,0,1), visibility 0s 0.28s, background 0.2s, border-color 0.2s;
+  visibility: hidden;
+}
+#font-panel.open { transform: translateX(0); visibility: visible; transition-delay: 0s; box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
+.font-filters {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 12px 16px; border-bottom: 1px solid var(--out-border); flex-shrink: 0;
+}
+.font-filter {
+  background: var(--field-bg); border: 1px solid var(--field-border); border-radius: 999px;
+  color: var(--muted); font-size: 12px; font-weight: 600; font-family: inherit;
+  min-height: 30px; padding: 0 12px; cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.font-filter:hover { border-color: var(--accent); color: var(--editor-text); }
+.font-filter.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.font-count { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.font-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 env(safe-area-inset-bottom, 0px); }
+.font-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; border-bottom: 1px solid var(--out-border);
+  padding: 11px 16px; cursor: pointer; font-family: inherit; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+}
+.font-row:hover { background: var(--hover-bg); }
+.font-row:focus-visible { outline-offset: -2px; }
+.font-row.current { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.font-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.font-row-sample {
+  font-size: 17px; line-height: 1.5; color: var(--editor-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.font-row-meta { display: flex; align-items: center; gap: 6px; }
+.font-row-name { font-size: 12px; color: var(--muted); }
+.font-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 4px; padding: 0 5px; line-height: 16px;
+}
+[data-theme="dark"] .font-badge { color: var(--accent-soft); }
+.font-row-check { width: 16px; display: flex; justify-content: center; color: var(--accent); flex-shrink: 0; }
+[data-theme="dark"] .font-row-check { color: var(--accent-soft); }
 
 /* Layout toggle — hidden on mobile */
 #btn-layout { display: none; }
@@ -506,10 +589,14 @@ body {
 
 /* Picker popover (fixed-positioned to escape #editor-wrap's overflow clipping) */
 #bullet-menu {
-  position: fixed; z-index: 60; width: min(280px, 92vw);
+  position: fixed; z-index: 60;
+  /* width and height come from the resize grip (useResizable) */
+  display: flex; flex-direction: column;
   background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
   border-radius: 10px; box-shadow: var(--shadow-pop); padding: 10px;
 }
+#bullet-menu > * { flex-shrink: 0; }
+#bullet-menu > .bullet-preset-grid { flex: 1 1 0; min-height: 0; max-height: none; align-content: start; }
 .bullet-menu-title {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
   color: #94A3B8; margin-bottom: 8px;
@@ -538,7 +625,7 @@ body {
 .bullet-nested-sep { color: #64748B; font-size: 10px; }
 .bullet-swatch:hover { border-color: var(--accent); }
 .bullet-swatch.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.bullet-custom { display: flex; gap: 6px; margin-top: 9px; }
+.bullet-custom { display: flex; gap: 6px; margin-top: 9px; padding-right: 14px; }
 .bullet-custom input {
   flex: 1; min-width: 0; background: var(--sel-bg); border: 1px solid var(--sel-border);
   border-radius: 6px; padding: 5px 8px; color: #E2E8F0;
@@ -570,13 +657,37 @@ body {
   white-space: pre-wrap; user-select: none; text-align: center;
 }
 
-/* Inline picker, attached below the divider while it's selected. */
-.i-divider-picker {
-  margin-top: 8px; width: min(320px, 94vw);
+/* Floating editor panels (divider editor; the bullet picker shares the grip).
+   Fixed to the viewport, sized by the resize grip, scrolling inside. */
+.float-panel {
+  position: fixed; z-index: 60;
+  display: flex; flex-direction: column;
   background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
-  border-radius: 10px; box-shadow: var(--shadow-pop); padding: 10px;
-  cursor: default;
+  border-radius: 10px; box-shadow: var(--shadow-pop);
+  animation: popIn 0.14s ease-out both;
 }
+.float-panel-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 10px 10px 18px; }
+.float-panel-close {
+  position: absolute; top: 4px; right: 4px; z-index: 1;
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  background: var(--out-hdr-bg); border: none; border-radius: 7px; color: #94A3B8; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.float-panel-close:hover { background: var(--tbtn-hover); color: #fff; }
+.i-divider-picker { cursor: default; }
+#divider-menu .divider-preset-grid { max-height: none; }
+
+/* Corner grip: drag (mouse, touch, pen) or arrow keys to resize a floating panel */
+.resize-grip {
+  position: absolute; right: 0; bottom: 0; z-index: 2;
+  width: 22px; height: 22px; padding: 0 3px 3px 0;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  background: none; border: none; border-radius: 0 0 9px 0;
+  color: #64748B; cursor: nwse-resize; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: color 0.12s;
+}
+.resize-grip:hover, .resize-grip.dragging { color: #C7D2FE; }
 .i-divider-title {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
   color: #94A3B8; margin-bottom: 8px;
@@ -1143,7 +1254,7 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
 
 /* ── Toolbar mixed (indeterminate) states — STATE_MODEL.md §4 ── */
 .tbtn.mixed { background: var(--tbtn-hover); color: #C7D2FE; box-shadow: inset 0 0 0 1px var(--accent); }
-#font-select.mixed { font-style: italic; opacity: 0.85; }
+#font-select.mixed .font-select-label { font-style: italic; opacity: 0.85; }
 
 /* ── Styled confirm dialog (replaces window.confirm) ── */
 .confirm-overlay {
@@ -1191,8 +1302,8 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
    ───────────────────────────────────────────────────────────── */
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 #app-header :focus-visible, #toolbar :focus-visible, #output-header :focus-visible,
-.panel-header :focus-visible, #saves-panel-header :focus-visible,
-#bullet-menu :focus-visible, .i-divider-picker :focus-visible { outline-color: #A5B4FC; }
+.panel-header :focus-visible, #saves-panel-header :focus-visible, #font-menu :focus-visible,
+#bullet-menu :focus-visible, .float-panel :focus-visible { outline-color: #A5B4FC; }
 .editor:focus-visible { outline: none; }
 #copy-btn:focus-visible, #btn-welcome-start:focus-visible, .confirm-ok:focus-visible,
 #btn-do-save:focus-visible, #btn-do-update:focus-visible { outline-offset: 3px; }
@@ -1216,7 +1327,10 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   /* One row: Reset moves into the More menu, the font picker takes the slack. */
   #toolbar-right { display: none; }
   #btn-reset-more { display: flex; }
-  #font-select { flex: 1; min-width: 0; text-overflow: ellipsis; }
+  #font-menu-wrap { flex: 1; }
+  #font-select { flex: 1; min-width: 0; }
+  /* the button sits mid-bar on phones: hang the menu from its right edge */
+  #font-menu { left: auto; right: 0; min-width: 210px; }
   #more-menu { padding: 6px; gap: 4px; }
   .sep { margin: 0 2px; }
   /* Emoji picker hangs off the More menu (not its own button) so it can use the
@@ -1227,6 +1341,7 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   }
 
   #saves-panel, #settings-panel, #side-menu { width: 100vw; border-left: none; }
+  #font-panel { width: 100vw; border-right: none; }
   #welcome-overlay { padding: 12px; }
   #welcome-header { padding: 22px 20px 0; }
   #welcome-body { padding: 14px 20px 18px; }
@@ -1260,7 +1375,10 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   [data-theme="dark"] #theme-knob { transform: translateX(18px); }
   #theme-knob svg { width: 12px; height: 12px; }
 
-  #font-select { height: 44px; font-size: 16px; padding-left: 9px; padding-right: 24px; background-position: right 6px center; }
+  #font-select { height: 44px; font-size: 15px; gap: 6px; padding: 0 7px 0 9px; }
+  .font-option { min-height: 44px; font-size: 15px; }
+  .font-filter { min-height: 36px; padding: 0 14px; font-size: 13px; }
+  .font-row { min-height: 64px; }
   #save-name-input, .settings-select { min-height: 44px; font-size: 16px; }
   #btn-do-save, #btn-do-update { min-height: 44px; font-size: 14px; padding: 0 16px; }
   .btn-load-save { min-height: 40px; padding: 0 14px; font-size: 13px; }
@@ -1284,6 +1402,11 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   .confirm-cancel, .confirm-ok { min-height: 44px; font-size: 14px; }
   #btn-welcome-start, #btn-welcome-skip { min-height: 48px; }
   #toast-action { min-height: 36px; }
+  .resize-grip { width: 36px; height: 36px; padding: 0 5px 5px 0; }
+  .resize-grip svg { width: 15px; height: 15px; }
+  .float-panel-close { width: 40px; height: 40px; }
+  .float-panel-body { padding-bottom: 30px; }
+  .bullet-custom { padding-right: 26px; }
 
   /* pickers */
   #emoji-grid { grid-template-columns: repeat(7, 1fr); }
@@ -1294,7 +1417,6 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   .bullet-category, .divider-category { min-height: 32px; padding: 0 12px; font-size: 12px; }
   .bullet-grid { grid-template-columns: repeat(6, 1fr); gap: 6px; }
   .bullet-swatch { height: 40px; }
-  .bullet-preset-grid { max-height: 180px; }
   .bullet-custom input { min-height: 40px; }
   .bullet-custom-apply { min-height: 40px; padding: 0 16px; font-size: 13px; }
   .divider-tab { min-height: 36px; font-size: 12px; }

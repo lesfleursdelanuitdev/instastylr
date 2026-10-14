@@ -53,7 +53,8 @@ test("font dropdown restyles the selection", async ({ page }) => {
   const editor = await start(page);
   await editor.pressSequentially("Hello");
   await page.keyboard.press("ControlOrMeta+A");
-  await page.locator("#font-select").selectOption("sans");
+  await page.locator("#font-select").click();
+  await page.locator('#font-menu [data-font="sans"]').click();
 
   await expect(page.locator("#output-body")).toHaveText("𝖧𝖾𝗅𝗅𝗈");
 });
@@ -64,7 +65,11 @@ test("a font with no bold variant disables Bold and shows a strip advisory", asy
   await page.keyboard.press("ControlOrMeta+A");
   await page.locator("#btn-bold").click(); // bold serif
 
-  await page.locator("#font-select").selectOption("mono");
+  // Monospace isn't in the toolbar's short list: it lives in the font panel.
+  await page.locator("#font-select").click();
+  await page.locator("#btn-more-fonts").click();
+  await page.locator('#font-panel [data-font="mono"]').click();
+  await expect(page.locator("#font-panel")).toBeHidden();
 
   // Bold can't be expressed in Monospace → button disabled, the bit was stripped,
   // and a suppressible advisory toast explains why.
@@ -176,4 +181,131 @@ test("reset on an unsaved draft asks for confirmation", async ({ page }) => {
   await page.locator("#btn-reset").click();
   await page.locator(".confirm-ok").click();
   await expect(page.locator("#output-body")).toContainText("Your styled text will appear here");
+});
+
+test("font panel: slides in from More fonts, filters by style, closes", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("Hello");
+  await page.keyboard.press("ControlOrMeta+A");
+
+  // The toolbar menu is the short list plus the way into the panel.
+  await page.locator("#font-select").click();
+  await expect(page.locator("#font-menu [role=option]")).toHaveCount(4);
+  await page.locator("#btn-more-fonts").click();
+  const panel = page.locator("#font-panel");
+  await expect(panel).toBeVisible();
+  await expect(page.locator("#font-menu")).toHaveCount(0);
+
+  const rows = panel.locator(".font-row");
+  const all = await rows.count();
+  expect(all).toBeGreaterThan(30);
+
+  await panel.locator('[data-filter="bold"]').click();
+  await expect(rows).toHaveCount(4);
+  await panel.locator('[data-filter="italic"]').click();
+  await expect(rows).toHaveCount(2);
+  await panel.locator('[data-filter="boldItalic"]').click();
+  await expect(rows).toHaveCount(2);
+  await panel.locator('[data-filter="all"]').click();
+  await expect(rows).toHaveCount(all);
+
+  // Picking applies the font to the selection and closes the panel.
+  await panel.locator('[data-font="currency"]').click();
+  await expect(panel).toBeHidden();
+  await expect(page.locator("#output-body")).toHaveText("ⱧɆⱠⱠØ");
+  await expect(page.locator("#font-select")).toContainText("Currency");
+
+  // Close button and Escape both dismiss it without changing the font.
+  await page.locator("#font-select").click();
+  await page.locator("#btn-more-fonts").click();
+  await panel.locator(".btn-close-panel").click();
+  await expect(panel).toBeHidden();
+  await page.locator("#font-select").click();
+  await page.locator("#btn-more-fonts").click();
+  await expect(panel).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(page.locator("#output-body")).toHaveText("ⱧɆⱠⱠØ");
+});
+
+test("divider editor: stays open while editing, applies, closes three ways", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("above");
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-divider").click();
+  await expect(page.locator("#output-body")).toContainText("━━━━━━━━━━");
+
+  // Tapping the divider opens its editor as a floating panel.
+  await page.locator(".i-divider-line").click();
+  const menu = page.locator("#divider-menu");
+  await expect(menu).toBeVisible();
+
+  // Every control works without the panel closing (it used to close on the first press).
+  await menu.locator(".i-divider-swatch", { hasText: "======" }).first().click();
+  await expect(menu).toBeVisible();
+  await expect(page.locator("#output-body")).toContainText("=====");
+  await menu.locator(".divider-tab", { hasText: "Line" }).click();
+  await menu.locator('.divider-field input[type="text"]').fill("*");
+  await menu.locator('.divider-field input[type="range"]').first().fill("6");
+  await menu.locator(".divider-apply").click();
+  await expect(menu).toBeVisible();
+  await expect(page.locator("#output-body")).toContainText("******");
+
+  await menu.locator(".float-panel-close").click();
+  await expect(menu).toHaveCount(0);
+  await page.locator(".i-divider-line").click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await page.locator(".i-divider-line").click();
+  await expect(menu).toBeVisible();
+  await page.locator("#output-body").click();
+  await expect(menu).toHaveCount(0);
+  await expect(page.locator("#output-body")).toContainText("******");
+});
+
+test("bullet and divider panels resize by dragging or with the arrow keys, and remember it", async ({ page }) => {
+  const editor = await start(page);
+  await editor.pressSequentially("item one");
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-ul").click();
+  await page.locator("#bullet-handle .bullet-handle-btn").click();
+  const bullet = page.locator("#bullet-menu");
+  const before = (await bullet.boundingBox())!;
+
+  // Mouse drag on the corner grip.
+  const grip = (await bullet.locator(".resize-grip").boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + 120, grip.y + 80, { steps: 5 });
+  await page.mouse.up();
+  const after = (await bullet.boundingBox())!;
+  expect(after.width).toBeGreaterThan(before.width + 100);
+  expect(after.height).toBeGreaterThan(before.height + 60);
+
+  // Arrow keys on the grip, in 16px steps.
+  await bullet.locator(".resize-grip").focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowUp");
+  const keyed = (await bullet.boundingBox())!;
+  expect(Math.round(keyed.width)).toBe(Math.round(after.width) - 16);
+  expect(Math.round(keyed.height)).toBe(Math.round(after.height) - 16);
+
+  // The size survives closing and reopening.
+  await page.keyboard.press("Escape");
+  await page.locator("#bullet-handle .bullet-handle-btn").click();
+  const again = (await bullet.boundingBox())!;
+  expect(Math.round(again.width)).toBe(Math.round(keyed.width));
+
+  // The divider panel has the same grip.
+  await page.keyboard.press("Escape");
+  await page.locator("#btn-more").click();
+  await page.locator("#btn-divider").click();
+  await page.locator(".i-divider-line").click();
+  const divider = page.locator("#divider-menu");
+  const d0 = (await divider.boundingBox())!;
+  await divider.locator(".resize-grip").focus();
+  await page.keyboard.press("ArrowLeft");
+  const d1 = (await divider.boundingBox())!;
+  expect(Math.round(d1.width)).toBe(Math.round(d0.width) - 16);
 });

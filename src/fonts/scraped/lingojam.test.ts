@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { LINGOJAM_FONTS } from "./lingojam";
 import { BASE_FONTS, FONTS, supportsBold, supportsItalic } from "../mappings";
 import { transformRun } from "../transform";
-import { MORE_UI_FONTS, fontLabel } from "../uiFonts";
+import { ALL_UI_FONTS, QUICK_FONTS, filterFonts, fontLabel } from "../uiFonts";
 import { isKnownFont } from "../../editor/fontStyle";
 
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
@@ -32,11 +32,19 @@ describe("scraped LingoJam fonts", () => {
   });
 
   it("are known to the editor and the font picker", () => {
-    expect(MORE_UI_FONTS.map((f) => f.id)).toEqual(LINGOJAM_FONTS.map((f) => f.id));
+    expect(ALL_UI_FONTS.map((f) => f.id)).toEqual(FONTS.map((f) => f.id));
     for (const f of LINGOJAM_FONTS) {
       expect(isKnownFont(f.id)).toBe(true);
       expect(fontLabel(f.id)).toBe(f.label);
     }
+  });
+
+  it("stay out of the toolbar's short list and the bold/italic filters", () => {
+    expect(QUICK_FONTS.map((f) => f.id)).toEqual(["serif", "sans", "script", "fraktur"]);
+    expect(filterFonts(ALL_UI_FONTS, "all").length).toBe(FONTS.length);
+    expect(filterFonts(ALL_UI_FONTS, "bold").map((f) => f.id)).toEqual(["serif", "sans", "script", "fraktur"]);
+    expect(filterFonts(ALL_UI_FONTS, "italic").map((f) => f.id)).toEqual(["serif", "sans"]);
+    expect(filterFonts(ALL_UI_FONTS, "boldItalic").map((f) => f.id)).toEqual(["serif", "sans"]);
   });
 
   for (const font of LINGOJAM_FONTS) {

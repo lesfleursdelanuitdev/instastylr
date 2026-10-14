@@ -7,14 +7,13 @@ import { BULLET_CATEGORY_FILTERS, BULLET_PRESETS } from "../bullet/presets";
 import { BULLET_CATEGORY_LABELS, bulletPresetMarker, isBulletPresetActive, type BulletCategory } from "../bullet/types";
 import { firstGrapheme } from "../grapheme";
 import { $isMarkedListNode } from "../nodes/MarkedListNode";
+import { fitInViewport, useResizable, viewportRoom } from "../../ui/useResizable";
 
 /**
  * Floating bullet picker. The per-list marker model already exists (MarkedListNode
  * carries `__marker`, serialize.ts emits it, the editor previews it via --ist-marker);
  * this is the only thing that *writes* a marker outside the tests.
  */
-
-const MENU_W = 280;
 
 type Anchor = { key: string; top: number; marker: string };
 
@@ -31,6 +30,17 @@ export function BulletMenuPlugin() {
   const menuInteractingRef = useRef(false);
   const openRef = useRef(open);
   openRef.current = open;
+  const { size, grip } = useResizable("bullet", { w: 280, h: 320 }, { w: 220, h: 200 });
+
+  // Beside the handle (right, else left), kept on screen at whatever size it is.
+  const place = useCallback(() => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    let left = r.right + 6;
+    if (left + size.w > viewportRoom().w + 8) left = r.left - size.w - 6;
+    setMenuPos(fitInViewport(left, r.top, size));
+  }, [size.w, size.h]);
 
   const filteredPresets = useMemo(
     () => (category === "all" ? BULLET_PRESETS : BULLET_PRESETS.filter((p) => p.category === category)),
@@ -114,14 +124,8 @@ export function BulletMenuPlugin() {
 
   useEffect(() => {
     if (!open) return;
-    const reposition = () => {
-      const btn = btnRef.current;
-      if (!btn) return;
-      const r = btn.getBoundingClientRect();
-      let left = r.right + 6;
-      if (left + MENU_W > window.innerWidth - 8) left = Math.max(8, r.left - MENU_W - 6);
-      setMenuPos({ left, top: r.top });
-    };
+    const reposition = place;
+    reposition(); // also when the panel is resized
     const vv = window.visualViewport;
     window.addEventListener("resize", reposition);
     vv?.addEventListener("resize", reposition);
@@ -131,19 +135,14 @@ export function BulletMenuPlugin() {
       vv?.removeEventListener("resize", reposition);
       vv?.removeEventListener("scroll", reposition);
     };
-  }, [open]);
+  }, [open, place]);
 
   const toggleOpen = () => {
     if (open) {
       setOpen(false);
       return;
     }
-    const btn = btnRef.current;
-    if (!btn) return;
-    const r = btn.getBoundingClientRect();
-    let left = r.right + 6;
-    if (left + MENU_W > window.innerWidth - 8) left = Math.max(8, r.left - MENU_W - 6);
-    setMenuPos({ left, top: r.top });
+    place();
     setCustom("");
     setOpen(true);
   };
@@ -183,7 +182,7 @@ export function BulletMenuPlugin() {
         <div
           id="bullet-menu"
           role="menu"
-          style={{ left: menuPos.left, top: menuPos.top }}
+          style={{ left: menuPos.left, top: menuPos.top, width: size.w, height: size.h }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="bullet-menu-title">Bullet</div>
@@ -268,6 +267,7 @@ export function BulletMenuPlugin() {
               Set
             </button>
           </div>
+          {grip}
         </div>
       )}
     </div>

@@ -4,7 +4,8 @@
  * Stores a rendered `line` for export plus optional `recipe` / `wrapper` so the
  * picker builder can reopen with the same settings.
  */
-import { type ReactNode, useCallback, useEffect, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
 import { mergeRegister } from "@lexical/utils";
@@ -26,6 +27,7 @@ import {
 import { normalizeDividerLine } from "../divider/render";
 import { DEFAULT_DIVIDER_LINE, type DividerConfig, type DividerRecipe, type DividerWrapper } from "../divider/types";
 import { DividerPicker } from "./DividerPicker";
+import { fitInViewport, useResizable, viewportRoom } from "../../ui/useResizable";
 
 export const DEFAULT_DIVIDER = DEFAULT_DIVIDER_LINE;
 
@@ -35,6 +37,8 @@ const DEFAULT_DIVIDER_RECIPE: DividerRecipe = {
   count: 10,
   mode: "solid",
 };
+
+const MIN_SIZE = { w: 260, h: 240 };
 
 export type SerializedDividerNode = Spread<
   { line: string; recipe?: DividerRecipe; wrapper?: DividerWrapper | null },
@@ -55,6 +59,12 @@ function DividerComponent({
   const [editor] = useLexicalComposerContext();
   const [isSelected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey);
   const lineRef = useRef<HTMLSpanElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // The editor panel's own open state. It can't follow the node selection: any
+  // press inside the panel moves the selection, which used to close it mid-edit.
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number; height: number } | null>(null);
+  const { size, grip } = useResizable("divider", { w: 340, h: 520 }, MIN_SIZE);
 
   const onDelete = useCallback(
     (event: KeyboardEvent) => {
@@ -79,7 +89,8 @@ function DividerComponent({
           (event: MouseEvent) => {
             if (lineRef.current && lineRef.current.contains(event.target as Node)) {
               if (!event.shiftKey) clearSelection();
-              setSelected(!isSelected);
+              setSelected(true);
+              setOpen((v) => !v);
               return true;
             }
             return false;
@@ -91,6 +102,54 @@ function DividerComponent({
       ),
     [editor, isSelected, nodeKey, clearSelection, setSelected, onDelete],
   );
+
+  // Sit under the divider, or above it when there's no room, always on screen.
+  const place = useCallback(() => {
+    const line = lineRef.current?.closest(".i-divider");
+    if (!line) return;
+    const r = line.getBoundingClientRect();
+    const room = viewportRoom();
+    // Whichever side has more room; if the chosen height doesn't fit there, the
+    // panel is shown shorter rather than laid over the divider being edited.
+    const below = room.h + 8 - (r.bottom + 6);
+    const above = r.top - 6 - 8;
+    const under = below >= size.h || below >= above;
+    const height = Math.max(MIN_SIZE.h, Math.min(size.h, under ? below : above));
+    const top = under ? r.bottom + 6 : r.top - 6 - height;
+    setPos({ ...fitInViewport(r.left + r.width / 2 - size.w / 2, top, { w: size.w, h: height }), height });
+  }, [size.w, size.h]);
+
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place]);
+
+  useEffect(() => {
+    if (!open) return;
+    // Outside press / Escape close it; scrolling and resizing only move it.
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (menuRef.current?.contains(t) || lineRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const vv = window.visualViewport;
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    vv?.addEventListener("resize", place);
+    vv?.addEventListener("scroll", place);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+      vv?.removeEventListener("resize", place);
+      vv?.removeEventListener("scroll", place);
+    };
+  }, [open, place]);
 
   const applyConfig = useCallback(
     (config: DividerConfig) => {
@@ -105,18 +164,38 @@ function DividerComponent({
   );
 
   return (
-    <div className={`i-divider${isSelected ? " selected" : ""}`} role="separator" aria-label="Divider">
+    <div
+      className={`i-divider${isSelected || open ? " selected" : ""}`}
+      role="separator"
+      aria-label="Divider"
+      title="Edit divider"
+    >
       <span ref={lineRef} className="i-divider-line">
         {line}
       </span>
-      {isSelected && (
-        <div
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <DividerPicker line={line} recipe={recipe} wrapper={wrapper} onApply={applyConfig} />
-        </div>
-      )}
+      {open &&
+        pos &&
+        // Outside the editor's own element (like the bullet picker), so the editor
+        // doesn't treat presses and typing in the panel as edits to the caption.
+        createPortal(
+          <div
+            id="divider-menu"
+            ref={menuRef}
+            className="float-panel"
+            role="dialog"
+            aria-label="Divider"
+            style={{ left: pos.left, top: pos.top, width: size.w, height: pos.height }}
+          >
+            <button type="button" className="float-panel-close" title="Close" aria-label="Close" onClick={() => setOpen(false)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+            <div className="float-panel-body">
+              <DividerPicker line={line} recipe={recipe} wrapper={wrapper} onApply={applyConfig} />
+            </div>
+            {grip}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -22,7 +22,8 @@ import {
 import { $createDividerNode } from "../nodes/DividerNode";
 import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
-import { UI_FONTS, MORE_UI_FONTS } from "../../fonts/uiFonts";
+import { FontMenu } from "../../ui/FontMenu";
+import { FontPanel } from "../../ui/FontPanel";
 import { MoreMenu } from "./MoreMenu";
 
 type ListState = "bullet" | "number" | null;
@@ -93,6 +94,11 @@ export function ToolbarPlugin({
   const [italicAvail, setItalicAvail] = useState(true);
   const [fontId, setFontId] = useState("serif");
   const [listType, setListType] = useState<ListState>(null);
+  const [fontPanelOpen, setFontPanelOpen] = useState(false);
+  const closeFontPanel = useCallback(() => {
+    setFontPanelOpen(false);
+    editor.focus();
+  }, [editor]);
 
   const readSelectionState = useCallback(() => {
     const selection = $getSelection();
@@ -240,32 +246,20 @@ export function ToolbarPlugin({
       </button>
       <div className="sep" />
 
-      <select
-        id="font-select"
-        title="Font style"
-        aria-label="Font style"
-        className={fontId === MIXED_FONT ? "mixed" : ""}
-        value={fontId === MIXED_FONT ? "__mixed" : fontId}
-        onChange={(e) => applyFont(e.target.value)}
-      >
-        {fontId === MIXED_FONT && (
-          <option value="__mixed" disabled>
-            Mixed
-          </option>
-        )}
-        {UI_FONTS.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.select}
-          </option>
-        ))}
-        <optgroup label="More styles">
-          {MORE_UI_FONTS.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.select}
-            </option>
-          ))}
-        </optgroup>
-      </select>
+      <FontMenu
+        fontId={fontId === MIXED_FONT ? null : fontId}
+        onPick={applyFont}
+        onMore={() => setFontPanelOpen(true)}
+      />
+      <FontPanel
+        open={fontPanelOpen}
+        fontId={fontId === MIXED_FONT ? null : fontId}
+        onPick={(id) => {
+          setFontPanelOpen(false);
+          applyFont(id);
+        }}
+        onClose={closeFontPanel}
+      />
 
       <MoreMenu
         listType={listType}
