@@ -87,3 +87,13 @@ A feature that changes how the app behaves starts as a written note in `docs/` w
 ## Notes
 
 Styled Unicode text has a cost: screen readers read these characters badly or skip them, and search does not match them. Use it for a heading or an accent, and keep the words that matter in plain text. [The overview](docs/OVERVIEW.md) lists this and the other known limits.
+
+## Licence
+
+The code is released under the [MIT licence](LICENSE).
+
+Two things in this repository are not covered by it:
+
+- **The photographs** in `src/landing/photos/` are © Monica Gonsalves (Les Fleurs de la Nuit), all rights reserved. See [`src/landing/photos/NOTICE.md`](src/landing/photos/NOTICE.md).
+- **The fonts** in `src/landing/fonts/` (Bodoni Moda and Manrope) are under the SIL Open Font License 1.1; their licence texts sit next to the font files.
+
