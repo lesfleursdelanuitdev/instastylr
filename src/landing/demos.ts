@@ -26,13 +26,18 @@ export const stylesDemo: Demo = {
   steps: 9,
   at(step) {
     const font = step >= 7 ? "currency" : step >= 6 ? "fraktur" : step >= 5 ? "script" : "serif";
-    const first: Seg = { text: "Golden hour", bold: step >= 2, selected: step === 1 || step === 2, font };
-    const mid: Seg = { text: " ", font };
-    const last: Seg = { text: "in Lisbon", italic: step >= 3, selected: step === 3, font };
+    // Fonts go on what is selected, so before the font menu the whole caption gets selected
+    // (steps 4-7). Like the app, a font without italic (or bold) drops that style.
+    const all = step >= 4 && step <= 7;
+    const keepsBold = font !== "currency";
+    const keepsItalic = font === "serif";
+    const first: Seg = { text: "Golden hour", bold: step >= 2 && keepsBold, selected: step === 1 || step === 2 || all, font };
+    const mid: Seg = { text: " ", font, selected: all };
+    const last: Seg = { text: "in Lisbon", italic: step >= 3 && keepsItalic, selected: step === 3 || all, font };
     const menuOpen = step >= 4 && step <= 7;
     const cursor = ["", "seg:0:0", "bold", "italic", "font", "pop:2", "pop:3", "pop:4", "copy"][step] || undefined;
     return {
-      lines: [line(first, mid, last), line(seg("#travel #portugal", { font }))],
+      lines: [line(first, mid, last), line(seg("#travel #portugal", { font, selected: all }))],
       caret: step === 0,
       bold: step === 2,
       italic: step === 3,
@@ -139,22 +144,23 @@ export function heroFrames(): Frame[] {
   const plain = base([seg(a), seg(b)], { caret: true });
   push(plain, 900);
 
+  // Every change lands only on the words selected at that moment, as in the app:
+  // "Golden hour" gets bold, then italic; "in Lisbon" gets Script.
   const selA = base([seg(a, { selected: true }), seg(b)]);
   const boldA = base([seg(a, { bold: true, selected: true }), seg(b)], { bold: true });
-  const selB = base([seg(a, { bold: true }), seg(b, { selected: true })]);
-  const italB = base([seg(a, { bold: true }), seg(b, { italic: true, selected: true })], { italic: true });
-  const styled = base([seg(a, { bold: true }), seg(b, { italic: true })]);
-  const menu = (active: number): State => ({ ...styled, popover: { kind: "fonts", items: FONT_MENU, active } });
-  const scriptSegs = [seg(a, { bold: true, font: "script" }), seg(b, { italic: true, font: "script" })];
-  const script = base(scriptSegs, { font: "script" });
-  const withEmoji = base([...scriptSegs, seg(" 🌅", { font: "script" })], { font: "script" });
+  const boldItalA = base([seg(a, { bold: true, italic: true, selected: true }), seg(b)], { bold: true, italic: true });
+  const selB = base([seg(a, { bold: true, italic: true }), seg(b, { selected: true })]);
+  const menu = (active: number): State => ({ ...selB, popover: { kind: "fonts", items: FONT_MENU, active } });
+  const scriptB = (selected: boolean) => [seg(a, { bold: true, italic: true }), seg(b, { font: "script", selected })];
+  const script = base(scriptB(false), { font: "script" });
+  const withEmoji = base([...scriptB(false), seg(" 🌅", { font: "script" })], { font: "script" });
 
   act("seg:0:0", plain, selA, 900); // select "Golden hour"
-  act("bold", selA, boldA, 1400); // press B → it turns bold
-  act("seg:0:1", boldA, selB, 900); // select "in Lisbon"
-  act("italic", selB, italB, 1400); // press I → it turns italic
-  act("font", italB, menu(0), 1000); // open the font menu
-  act("pop:2", menu(0), { ...script, popover: { kind: "fonts", items: FONT_MENU, active: 2 } }, 1300); // choose Script
+  act("bold", selA, boldA, 1300); // press B → it turns bold
+  act("italic", boldA, boldItalA, 1300); // press I → bold italic
+  act("seg:0:1", boldItalA, selB, 900); // select "in Lisbon"
+  act("font", selB, menu(0), 1000); // open the font menu
+  act("pop:2", menu(0), { ...base(scriptB(true), { font: "script" }), popover: { kind: "fonts", items: FONT_MENU, active: 2 } }, 1300); // choose Script: only "in Lisbon" changes
   push(script, 700);
   push({ ...withEmoji, caret: true }, 1300);
   act("copy", { ...withEmoji, caret: true }, { ...withEmoji, copied: true }, 2600); // press Copy

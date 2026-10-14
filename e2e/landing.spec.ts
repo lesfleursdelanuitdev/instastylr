@@ -26,10 +26,24 @@ test("landing page: only the hero is animated; sections are ordinary blocks with
   // The result section: the same caption plain and styled, from the real engine.
   const plain = page.locator('[data-scene-card="plain"]');
   const styled = page.locator('[data-scene-card="styled"]');
-  await expect(plain).toContainText("New in the shop");
-  await expect(plain).not.toContainText("✿");
-  await expect(styled).toContainText("𝐍𝐞𝐰 𝐢𝐧 𝐭𝐡𝐞 𝐬𝐡𝐨𝐩");
-  await expect(styled).toContainText("✿ Dahlias, pink");
+  await expect(plain).toContainText("Nobody sees a flower really");
+  await expect(plain).not.toContainText("•");
+  await expect(plain).not.toContainText("──");
+  // quote in serif italic, author plain, then the EXIF block between two identical rules, labels bold
+  await expect(styled).toContainText("𝑁𝑜𝑏𝑜𝑑𝑦 𝑠𝑒𝑒𝑠 𝑎 𝑓𝑙𝑜𝑤𝑒𝑟");
+  await expect(styled).toContainText("— Georgia O’Keeffe");
+  await expect(styled).toContainText("• 𝐀𝐩𝐞𝐫𝐭𝐮𝐫𝐞  f/2.8");
+  await expect(styled).toContainText("• 𝐈𝐒𝐎  400");
+  const lines = (await styled.locator(".scene-text").innerText()).split("\n");
+  const rules = lines.filter((l) => l.includes("──"));
+  expect(rules.length).toBe(2);
+  expect(rules[0]).toBe(rules[1]);
+  expect(lines.indexOf(rules[0])).toBeLessThan(lines.findIndex((l) => l.startsWith("• ")));
+  expect(lines.lastIndexOf(rules[1])).toBe(lines.length - 1);
+  // as in the app, a rule has a blank line on each side
+  const r0 = lines.indexOf(rules[0]);
+  expect(lines[r0 - 1]).toBe("");
+  expect(lines[r0 + 1]).toBe("");
   await expect(page.locator(".post-card img.post-photo")).toHaveCount(2);
   expect(await page.locator(".post-card img.post-photo").first().evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0 || new Promise((r) => (i.onload = () => r(true))))).toBe(true);
   await expect(page.locator(".places")).toHaveCount(0); // one worked example (the posts) is enough
@@ -202,9 +216,10 @@ test("before/after: the tabs under it switch the place, the Instagram post is th
 
   await page.locator('[data-scene="video"]').click();
   await expect(styled).toHaveClass(/scene-video/);
-  await expect(styled).toContainText("➤ 2:10 Camera settings");
-  await expect(plain).toContainText("2:10 Camera settings");
-  await expect(plain).not.toContainText("➤");
+  // chapter lines start with their timestamp, so YouTube still makes chapters of them
+  expect((await styled.locator(".video-desc").innerText()).split("\n")).toContain("2:10  Camera settings");
+  await expect(styled).toContainText("• 90mm f/2.8 Macro");
+  await expect(plain).not.toContainText("•");
   await expect(page.locator('[data-scene="video"]')).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#scene-panel")).toHaveAttribute("aria-label", "YouTube video");
 
@@ -212,7 +227,8 @@ test("before/after: the tabs under it switch the place, the Instagram post is th
   await page.locator('[data-scene="video"]').focus();
   await page.keyboard.press("ArrowRight");
   await expect(styled).toHaveClass(/scene-linkedin/);
-  await expect(styled).toContainText("𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝗲𝗿");
+  await expect(styled).toContainText("𝗙𝗹𝗼𝘄𝗲𝗿 𝗽𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝗲𝗿");
+  await expect(styled).toContainText("1. Slow down.");
   await page.keyboard.press("Home");
   await expect(styled).toHaveClass(/scene-post/);
 
@@ -234,4 +250,13 @@ test("before/after on a phone: the tabs stay on screen while the stacked cards a
   expect(box.y).toBeGreaterThan(0);
   await page.locator('[data-scene="bio"]').tap();
   await expect(page.locator('[data-scene-card="plain"]')).toHaveClass(/scene-bio/);
+});
+
+test("before/after: the bio example fits Instagram's 150-character limit", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('[data-scene="bio"]').click();
+  const styled = page.locator('[data-scene-card="styled"] .scene-text');
+  await expect(styled).toContainText("𝐋𝐞𝐬 𝐅𝐥𝐞𝐮𝐫𝐬");
+  const bio = await styled.innerText();
+  expect([...new Intl.Segmenter().segment(bio)].length).toBeLessThanOrEqual(150);
 });

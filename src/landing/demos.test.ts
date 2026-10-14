@@ -18,7 +18,8 @@ describe("demos", () => {
     expect(outputOf(stylesDemo.at(2).lines)).toContain("𝐆𝐨𝐥𝐝𝐞𝐧 𝐡𝐨𝐮𝐫");
     expect(outputOf(stylesDemo.at(3).lines)).toContain("𝑖𝑛 𝐿𝑖𝑠𝑏𝑜𝑛");
     expect(stylesDemo.at(4).popover?.kind).toBe("fonts");
-    expect(outputOf(stylesDemo.at(5).lines)).toContain("𝓖𝓸𝓵𝓭𝓮𝓷");
+    expect(outputOf(stylesDemo.at(5).lines)).toContain("𝓖𝓸𝓵𝓭𝓮𝓷"); // bold carries over: Script has a bold
+    expect(stylesDemo.at(4).lines.flatMap((l) => ("segs" in l ? l.segs : [])).every((s) => s.selected)).toBe(true); // all selected before the font menu
     expect(stylesDemo.at(7).font).toBe("currency");
     expect(stylesDemo.at(8).copied).toBe(true);
     expect(stylesDemo.at(5).cursor).toBe("pop:2");
@@ -57,7 +58,7 @@ describe("demos", () => {
     const f = heroFrames();
     const sig = (st: (typeof f)[number]["state"]) => JSON.stringify({ ...st, cursor: undefined, press: undefined });
     const presses = f.map((x, i) => ({ x, i })).filter(({ x }) => x.state.press);
-    expect(presses.length).toBe(7); // select, B, select, I, font menu, Script, Copy
+    expect(presses.length).toBe(7); // select, B, I, select, font menu, Script, Copy
     for (const { x, i } of presses) {
       const travel = f[i - 1];
       // the frame before a press: pointer already on the same control, not pressing, long enough to get there…
@@ -74,7 +75,29 @@ describe("demos", () => {
     const iAt = f.findIndex((x) => x.state.press && x.state.cursor === "italic");
     expect(f.slice(0, bAt).some((x) => outputOf(x.state.lines).includes("𝐆"))).toBe(false);
     expect(outputOf(f[bAt].state.lines)).toContain("𝐆𝐨𝐥𝐝𝐞𝐧 𝐡𝐨𝐮𝐫");
-    expect(f.slice(0, iAt).some((x) => outputOf(x.state.lines).includes("𝑖𝑛"))).toBe(false);
-    expect(outputOf(f[iAt].state.lines)).toContain("𝑖𝑛 𝐿𝑖𝑠𝑏𝑜𝑛");
+    expect(f.slice(0, iAt).some((x) => outputOf(x.state.lines).includes("𝑮"))).toBe(false);
+    expect(outputOf(f[iAt].state.lines)).toContain("𝑮𝒐𝒍𝒅𝒆𝒏 𝒉𝒐𝒖𝒓"); // bold italic
+    // Script lands on "in Lisbon" only: "Golden hour" keeps its bold italic serif
+    const sAt = f.findIndex((x) => x.state.press && x.state.cursor === "pop:2");
+    expect(outputOf(f[sAt].state.lines)).toBe("𝑮𝒐𝒍𝒅𝒆𝒏 𝒉𝒐𝒖𝒓 𝒾𝓃 ℒ𝒾𝓈𝒷ℴ𝓃");
+  });
+
+  /** Between two moments, any piece of text whose style changed must have been selected (as in the app). */
+  const onlySelectedChanges = (states: import("./state").State[]) => {
+    const segs = (st: import("./state").State) => st.lines.flatMap((l) => ("segs" in l ? l.segs : []));
+    const look = (s: import("./state").Seg) => `${s.font ?? "serif"}|${Boolean(s.bold)}|${Boolean(s.italic)}`;
+    for (let i = 1; i < states.length; i++) {
+      const before = segs(states[i - 1]);
+      const after = segs(states[i]);
+      if (before.length !== after.length) continue; // text was typed or split: nothing restyled
+      after.forEach((s, j) => {
+        if (look(s) !== look(before[j]) && s.text.trim())
+          expect(s.selected || before[j].selected, `"${s.text}" restyled without being selected (moment ${i})`).toBe(true);
+      });
+    }
+  };
+  it("hero: only selected words ever change style", () => onlySelectedChanges(heroFrames().map((f) => f.state)));
+  it("stills: only selected words ever change style", () => {
+    for (const d of Object.values(DEMOS)) onlySelectedChanges(Array.from({ length: d.steps }, (_, s) => d.at(s)));
   });
 });

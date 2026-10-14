@@ -48,15 +48,32 @@ export function lineText(line: Line): string {
   return "divider" in line ? line.divider : line.segs.map((s) => s.text).join("");
 }
 
-/** What the app's output panel would show, one entry per line. */
+/**
+ * What the app's output panel would show, one entry per line. Like the app
+ * (editor/serialize.ts), a divider gets a blank line above and below it; blank
+ * lines never double up and never start or end the text.
+ */
 export function outputLines(lines: Line[]): string[] {
-  return lines.map((line) => {
-    if ("divider" in line) return line.divider;
-    const text = line.segs
-      .map((s) => transformRun({ text: s.text, fontId: s.font ?? "serif", bold: Boolean(s.bold), italic: Boolean(s.italic) }))
-      .join("");
-    return line.bullet ? `${line.bullet} ${text}` : text;
-  });
+  const out: string[] = [];
+  const blank = () => out.length && out[out.length - 1] !== "" && out.push("");
+  for (const line of lines) {
+    if ("divider" in line) {
+      blank();
+      out.push(line.divider);
+      out.push("");
+      continue;
+    }
+    out.push(renderLine(line));
+  }
+  while (out[out.length - 1] === "") out.pop();
+  return out;
+}
+
+function renderLine(line: Extract<Line, { segs: Seg[] }>): string {
+  const text = line.segs
+    .map((s) => transformRun({ text: s.text, fontId: s.font ?? "serif", bold: Boolean(s.bold), italic: Boolean(s.italic) }))
+    .join("");
+  return line.bullet ? `${line.bullet} ${text}` : text;
 }
 
 export function outputOf(lines: Line[]): string {

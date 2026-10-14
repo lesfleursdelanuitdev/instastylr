@@ -28,43 +28,55 @@ export function plainLines(lines: Line[]): string[] {
 }
 const text = (lines: Line[], styled: boolean) => (styled ? outputLines(lines) : plainLines(lines)).join("\n");
 
+/** A horizontal rule used above and below a block (the EXIF details, the gear list). */
+const RULE = "──────  ✦  ──────";
+
 export const SCENE_TEXT: Record<string, Line[]> = {
+  // A photographer's post: a quote (serif italic), its author (plain), then the camera
+  // details between two matching rules, one bulleted line each, labels in bold.
   caption: [
-    { segs: [t("New in the shop", { bold: true })] },
-    { divider: "─── ✦ ───" },
-    { segs: [t("Three prints from the night garden:")] },
-    { segs: [t("Dahlias, pink")], bullet: "✿" },
-    { segs: [t("Iris, violet")], bullet: "✿" },
-    { segs: [t("Water lilies")], bullet: "✿" },
-    { divider: "─── ✦ ───" },
-    { segs: [t("Free shipping this week.", { italic: true })] },
+    { segs: [t("“Nobody sees a flower really; it is so small. We haven’t time, and to see takes time.”", { italic: true })] },
+    { segs: [t("— Georgia O’Keeffe")] },
+    { divider: RULE },
+    { segs: [t("Camera", { bold: true }), t("  Sony α7 IV")], bullet: "•" },
+    { segs: [t("Lens", { bold: true }), t("  90mm f/2.8 Macro")], bullet: "•" },
+    { segs: [t("Focal length", { bold: true }), t("  90mm")], bullet: "•" },
+    { segs: [t("Aperture", { bold: true }), t("  f/2.8")], bullet: "•" },
+    { segs: [t("Shutter", { bold: true }), t("  1/200s")], bullet: "•" },
+    { segs: [t("ISO", { bold: true }), t("  400")], bullet: "•" },
+    { divider: RULE },
   ],
+  // A bio: name in bold, a line in serif italic, two short points, a pointer to the link.
   bio: [
     { segs: [t("Les Fleurs de la Nuit", { bold: true })] },
     { segs: [t("Flowers, photographed after dark", { italic: true })] },
-    { segs: [t("New prints every month")], bullet: "✿" },
-    { segs: [t("Tutorials on Fridays")], bullet: "✿" },
-    { divider: "─── ✦ ───" },
+    { segs: [t("Fine-art prints")], bullet: "✦" },
+    { segs: [t("Tutorials every Friday")], bullet: "✦" },
+    { segs: [t("↓ The night garden shop")] },
   ],
   title: [{ segs: [t("Photographing lilies at dusk", { bold: true })] }],
+  // YouTube turns timestamps at the start of a line into chapters, so those lines stay bare.
   description: [
-    { segs: [t("In this video", { bold: true })] },
-    { segs: [t("0:00 Finding the light")], bullet: "➤" },
-    { segs: [t("2:10 Camera settings")], bullet: "➤" },
-    { segs: [t("5:45 Editing the colour")], bullet: "➤" },
-    { divider: "─── ✦ ───" },
+    { segs: [t("Chapters", { bold: true })] },
+    { segs: [t("0:00  Finding the light")] },
+    { segs: [t("2:10  Camera settings")] },
+    { segs: [t("5:45  Editing the colour")] },
+    { divider: RULE },
     { segs: [t("Gear", { bold: true })] },
-    // plain: italic has no digits, so "50mm f/1.8" would come out half styled
-    { segs: [t("50mm f/1.8, a tripod, patience.")] },
+    { segs: [t("Sony α7 IV")], bullet: "•" },
+    { segs: [t("90mm f/2.8 Macro")], bullet: "•" },
+    { segs: [t("A tripod, and patience")], bullet: "•" },
+    { divider: RULE },
   ],
-  headline: [{ segs: [t("Photographer", { font: "sans", bold: true }), t(" · Creator · Teacher", { font: "sans" })] }],
+  // LinkedIn's own type is sans-serif, so the styling here is the sans family throughout.
+  headline: [{ segs: [t("Flower photographer", { font: "sans", bold: true }), t("  ·  Educator", { font: "sans" })] }],
   linkedin: [
-    { segs: [t("Three things low light taught me", { bold: true })] },
-    { segs: [t("Slow down: the light won't wait, but the flower will.")], bullet: "➤" },
-    { segs: [t("Underexpose, then lift the colour.")], bullet: "➤" },
-    { segs: [t("A dark background is a frame.")], bullet: "➤" },
-    { divider: "━━━━━━━━━━" },
-    { segs: [t("Workshops open next month.", { italic: true })] },
+    { segs: [t("Three things low light taught me", { font: "sans", bold: true })] },
+    { segs: [t("Slow down. The light won’t wait, but the flower will.")], bullet: "1." },
+    { segs: [t("Underexpose, then lift the colour.")], bullet: "2." },
+    { segs: [t("A dark background is a frame.")], bullet: "3." },
+    { segs: [t("")] },
+    { segs: [t("Workshops open next month.", { font: "sans", italic: true })] },
   ],
 };
 

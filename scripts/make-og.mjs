@@ -10,12 +10,15 @@ import { outputLines } from "../src/landing/state";
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 // inlined: a page made with setContent may not load file:// fonts
 const font = (f) => `data:font/woff2;base64,${readFileSync(here("../src/landing/fonts/" + f)).toString("base64")}`;
+const RULE = "──────  ✦  ──────";
 const caption = outputLines([
-  { segs: [{ text: "New in the shop", bold: true }] },
-  { divider: "─── ✦ ───" },
-  { segs: [{ text: "Dahlias, pink" }], bullet: "✿" },
-  { segs: [{ text: "Iris, violet" }], bullet: "✿" },
-  { segs: [{ text: "Free shipping this week.", italic: true }] },
+  { segs: [{ text: "“To see takes time.”", italic: true }] },
+  { segs: [{ text: "— Georgia O’Keeffe" }] },
+  { divider: RULE },
+  { segs: [{ text: "Lens", bold: true }, { text: "  90mm f/2.8 Macro" }], bullet: "•" },
+  { segs: [{ text: "Aperture", bold: true }, { text: "  f/2.8" }], bullet: "•" },
+  { segs: [{ text: "ISO", bold: true }, { text: "  400" }], bullet: "•" },
+  { divider: RULE },
 ]).join("\n");
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
