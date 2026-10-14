@@ -1,16 +1,16 @@
 /* ═══ InstaStylr landing page ═══
    Dressed like the rest of Les Fleurs de la Nuit (creative.lesfleursdelanuit.com):
-   a deep blue with soft radial glows (as on the engineering site) under a night sky, Bodoni Moda with pink italics, Manrope, wide
+   ink black, a night sky at the top that fades out, Bodoni Moda with pink italics, Manrope, wide
    letterspaced labels, the dahlia mark. The mock app keeps the app's own colours. */
-@font-face { font-family: "Bodoni Moda Variable"; font-style: normal; font-weight: 400 900; font-display: swap; src: url("/fonts/bodoni-moda-latin-opsz-normal.woff2") format("woff2-variations"); }
-@font-face { font-family: "Bodoni Moda Variable"; font-style: italic; font-weight: 400 900; font-display: swap; src: url("/fonts/bodoni-moda-latin-opsz-italic.woff2") format("woff2-variations"); }
-@font-face { font-family: Manrope; font-style: normal; font-weight: 300; font-display: swap; src: url("/fonts/manrope-latin-300-normal.woff2") format("woff2"); }
-@font-face { font-family: Manrope; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/manrope-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: Manrope; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/manrope-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Bodoni Moda Variable"; font-style: normal; font-weight: 400 900; font-display: swap; src: url("./fonts/bodoni-moda-latin-opsz-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Bodoni Moda Variable"; font-style: italic; font-weight: 400 900; font-display: swap; src: url("./fonts/bodoni-moda-latin-opsz-italic.woff2") format("woff2-variations"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 300; font-display: swap; src: url("./fonts/manrope-latin-300-normal.woff2") format("woff2"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 400; font-display: swap; src: url("./fonts/manrope-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 500; font-display: swap; src: url("./fonts/manrope-latin-500-normal.woff2") format("woff2"); }
 
 :root {
   --pink: #ff9fd0; --rose: #ff6fb5; --lilac: #c4b5ff; --peri: #9fb3ff;
-  --ink: #070B1A; --text: #efeaff; --soft: #cfc7ee; --muted: #9890bf; --line: #ffffff17;
+  --ink: #050406; --text: #efeaff; --soft: #cfc7ee; --muted: #9890bf; --line: #ffffff17;
   --display: "Bodoni Moda Variable", Didot, serif; --body: Manrope, system-ui, sans-serif;
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --gutter: clamp(18px, 4vw, 56px);
@@ -23,21 +23,8 @@ h1, h2, p { margin: 0; }
 a { color: inherit; text-decoration: none; }
 em { color: var(--pink); }
 :focus-visible { outline: 1px solid var(--pink); outline-offset: 5px; border-radius: 4px; }
-/* The backdrop: a darker shade of the app's blue, lit by three wide radial glows
-   (violet top right, blue left, a little rose bottom right), fixed behind the stars. */
-body::before {
-  content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
-  background:
-    radial-gradient(1200px 700px at 80% -10%, #3a1f7a88, transparent 60%),
-    radial-gradient(900px 600px at 0% 40%, #1e3a8a66, transparent 60%),
-    radial-gradient(1000px 800px at 100% 100%, #ff6fb51a, transparent 60%),
-    var(--ink);
-}
-/* Stars sit at the top of the page and fade out into the blue (as on the creative site) */
+/* Stars sit at the top of the page and fade out into the black (as on the creative site) */
 .sky { position: absolute; top: 0; left: 0; width: 100%; z-index: -1; pointer-events: none; }
-.sky[data-sky="bottom"] { top: auto; bottom: 0; }
-.sky[data-sky="left"], .sky[data-sky="right"] { width: clamp(70px, 22vw, 320px); }
-.sky[data-sky="right"] { left: auto; right: 0; }
 
 /* ── Entrances ── */
 html.js .hero-copy > *, html.js .hero-demo { opacity: 0; transform: translate3d(0, 22px, 0); transition: opacity 1.2s var(--ease-out), transform 1.2s var(--ease-out); }
@@ -72,7 +59,7 @@ html.js body.ready .hero .dahlia[data-draw] .dot, html.js .dahlia[data-draw].in 
   border-bottom: 1px solid transparent;
   transition: background .5s, border-color .5s, padding .5s;
 }
-.nav.scrolled { background: #070B1Ae0; border-color: var(--line); padding-block: 12px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.nav.scrolled { background: #050406e0; border-color: var(--line); padding-block: 12px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .brand { display: flex; gap: 12px; align-items: center; font: 400 21px var(--display); letter-spacing: -.01em; }
 .links { display: flex; align-items: center; gap: 28px; font: 400 12px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--soft); }
 .links .back { color: var(--pink); white-space: nowrap; }
@@ -130,6 +117,69 @@ h1 { font: 500 clamp(40px, 6.2vw, 84px)/1.04 var(--display); font-variation-sett
   .feature:nth-of-type(odd) .copy { order: 2; }
 }
 
+/* ── The result: one caption, pasted plain and pasted styled ── */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.result { display: grid; justify-items: center; text-align: center; padding: clamp(40px, 8vh, 90px) var(--gutter) clamp(30px, 6vh, 60px); }
+.result h2 { font: 500 clamp(30px, 4.4vw, 56px)/1.08 var(--display); font-variation-settings: "opsz" 28; letter-spacing: -.01em; text-wrap: balance; }
+.posts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; width: 100%; max-width: 760px; margin-top: clamp(28px, 5vh, 48px); }
+@media (min-width: 700px) { .posts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; } }
+.post { margin: 0; display: grid; gap: 12px; }
+.post figcaption { font: 500 10px var(--body); letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+.post.is-styled figcaption { color: var(--pink); }
+.post-card { text-align: left; border: 1px solid var(--line); border-radius: 16px; background: #0c0a10; overflow: hidden; font: 400 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #e9e6f0; }
+.post.is-styled .post-card { border-color: #ff9fd059; box-shadow: 0 24px 70px -30px #ff6fb566; }
+.post-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: 13px; }
+.post-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--lilac), var(--rose)); }
+.post-photo { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; background: #120f18; }
+.post-caption { margin: 0; padding: 14px 14px 18px; white-space: pre-wrap; word-break: break-word; min-height: 13em; }
+.post:not(.is-styled) .post-caption { color: #a9a4b8; }
+.facts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px 20px; width: 100%; max-width: 900px; margin: clamp(40px, 8vh, 76px) 0 0; padding: 0; }
+@media (min-width: 760px) { .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.facts li { display: grid; justify-items: center; gap: 10px; }
+.facts b { font: 500 clamp(52px, 7vw, 84px)/1 var(--display); font-variation-settings: "opsz" 28; letter-spacing: -.02em; color: var(--pink); font-variant-numeric: tabular-nums lining-nums; }
+.facts span { max-width: 18ch; font: 500 10px/1.7 var(--body); letter-spacing: .26em; text-transform: uppercase; color: var(--soft); }
+html.js .facts li { opacity: 0; transform: translate3d(0, 24px, 0); transition: opacity 1s var(--ease-out), transform 1s var(--ease-out); }
+html.js .facts.in li { opacity: 1; transform: none; }
+.facts li:nth-child(2) { transition-delay: .12s; } .facts li:nth-child(3) { transition-delay: .24s; } .facts li:nth-child(4) { transition-delay: .36s; }
+
+/* ── Why an editor beats a generator ── */
+.compare { display: grid; justify-items: center; text-align: center; padding: clamp(50px, 9vh, 100px) var(--gutter) clamp(20px, 4vh, 40px); }
+.compare h2 { font: 500 clamp(30px, 4.4vw, 56px)/1.08 var(--display); font-variation-settings: "opsz" 28; letter-spacing: -.01em; text-wrap: balance; }
+.compare-lede { max-width: 50ch; margin-top: 18px; color: var(--soft); font-size: clamp(15px, 1.5vw, 17px); line-height: 1.75; text-wrap: pretty; }
+.compare-table { width: 100%; max-width: 900px; margin-top: clamp(28px, 5vh, 44px); text-align: left; border-top: 1px solid var(--line); }
+.compare-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.compare-row span { font-size: 15px; line-height: 1.6; }
+.compare-row span:first-child { color: var(--muted); }
+.compare-row span:last-child { color: var(--text); padding-left: 26px; position: relative; }
+.compare-row:not(.compare-head) span:last-child::before { content: "✦"; position: absolute; left: 0; color: var(--pink); }
+.compare-head span { font: 500 10px var(--body) !important; letter-spacing: .3em; text-transform: uppercase; }
+.compare-head span:last-child { color: var(--pink); }
+@media (max-width: 560px) {
+  .compare-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .compare-head { display: none; }
+  .compare-row span:first-child { text-decoration: line-through; text-decoration-color: #9890bf80; }
+}
+
+/* ── Who it's for ── */
+.who { max-width: 1180px; margin: 0 auto; padding: clamp(30px, 6vh, 70px) var(--gutter); text-align: center; }
+.who-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 18px; text-align: left; border-top: 1px solid var(--line); }
+.who-grid > div { padding: 26px 0; border-bottom: 1px solid var(--line); }
+.who-grid h3 { margin: 0 0 8px; font: 500 italic clamp(22px, 2.6vw, 28px) var(--display); }
+.who-grid p { color: var(--soft); max-width: 44ch; }
+@media (min-width: 800px) {
+  .who-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .who-grid > div { padding: 30px 28px; border-bottom: 0; border-left: 1px solid var(--line); }
+  .who-grid > div:first-child { border-left: 0; padding-left: 0; }
+}
+
+.where-label { margin: clamp(36px, 6vh, 56px) 0 16px; }
+.where { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 12px; margin: 0; padding: 0; }
+.where li { padding: 10px 18px; border: 1px solid #ffffff26; border-radius: 999px; font: 400 14px var(--body); color: var(--soft); white-space: nowrap; }
+.where li:first-child { border-color: #ff9fd066; color: var(--pink); }
+
+/* ── Not found ── */
+.lost { min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 22px; text-align: center; padding: 120px var(--gutter) 80px; }
+
 /* ── Closing + footer ── */
 /* the large flower the engineering page closes on, drawing itself in */
 .closing .dahlia { width: min(360px, 76vw); height: auto; aspect-ratio: 1; margin-bottom: 4px; }
@@ -151,7 +201,7 @@ h1 { font: 500 clamp(40px, 6.2vw, 84px)/1.04 var(--display); font-variation-sett
 .mock {
   position: relative; overflow: hidden; border-radius: 18px; background: #F9F8F5; color: #0F172A;
   border: 1px solid #ffffff33;
-  box-shadow: 0 0 0 1px #00000080, 0 40px 100px -20px #020617, 0 18px 50px -18px #6e254499;
+  box-shadow: 0 0 0 1px #00000080, 0 40px 100px -20px #000, 0 18px 50px -18px #6e254499;
   font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; text-align: left;
   transition: background .6s, color .6s;
 }
@@ -208,7 +258,7 @@ h1 { font: 500 clamp(40px, 6.2vw, 84px)/1.04 var(--display); font-variation-sett
 .mock-out-line { min-height: 1.7em; }
 .mock-out-text { display: inline-block; white-space: pre-wrap; }
 .mock-foot { height: 30px; padding: 0 16px; gap: 14px; font-size: 11px; color: #8291A6; border-top: 1px solid #1E293B; }
-.mock-foot > span { display: inline-block; }
+.mock-foot > span { display: inline-block; font-variant-numeric: tabular-nums; }
 .mock-left { margin-left: auto; }
 
 /* popover: eases open from the top; a highlight slides between its items */
@@ -255,7 +305,7 @@ h1 { font: 500 clamp(40px, 6.2vw, 84px)/1.04 var(--display); font-variation-sett
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
-  html.js .hero-copy > *, html.js .hero-demo, html.js .reveal { opacity: 1; transform: none; }
+  html.js .hero-copy > *, html.js .hero-demo, html.js .reveal, html.js .facts li { opacity: 1; transform: none; }
   html.js .dahlia[data-draw] .pl { stroke-dashoffset: 0; }
   html.js .dahlia[data-draw] .pf { fill-opacity: var(--fo, .06); }
   html.js .dahlia[data-draw] .dot, html.js .dahlia[data-draw] .oc { opacity: 1; }

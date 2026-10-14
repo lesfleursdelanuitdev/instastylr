@@ -33,7 +33,7 @@ function node(tag: string, attrs: Record<string, string | number>): SVGElement {
   return e;
 }
 
-export function mountDahlia(svg: SVGSVGElement, bg = "#070B1A"): void {
+export function mountDahlia(svg: SVGSVGElement, bg = "#050406"): void {
   svg.setAttribute("viewBox", "0 0 300 300");
   let i = 0;
   const look = svg.dataset.variant === "colour" ? COLOUR : QUIET;

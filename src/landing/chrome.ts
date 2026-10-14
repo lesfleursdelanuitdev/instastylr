@@ -1,22 +1,16 @@
 /** What every page of the site shares: the night sky, the dahlia mark, the nav's scrolled state, reveals. */
 import "./landing.css";
-import { ss, startStarField } from "./stars";
+import { startStarField } from "./stars";
 import { mountDahlia } from "./dahlia";
 
 export function bootChrome(): { reduced: boolean } {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   document.documentElement.classList.add("js");
 
-  // Stars frame the page and fade towards its middle: from the top down (the same
-  // sky as creative.lesfleursdelanuit.com), from the footer up, and in from each side.
-  const inward = (x: number) => (1 - ss(0.05, 1, x)) ** 1.6; // x: 0 at the outer edge → 1 at the strip's inner edge
-  for (const sky of document.querySelectorAll<HTMLCanvasElement>("canvas.sky")) {
-    const where = sky.dataset.sky;
-    if (where === "bottom") startStarField(sky, { fade: "photoBottom", density: 4000, fine: 1.2, shooting: false });
-    else if (where === "left") startStarField(sky, { fade: "even", fadeX: inward, cover: "body", density: 4600, fine: 1, shooting: false });
-    else if (where === "right") startStarField(sky, { fade: "even", fadeX: (x) => inward(1 - x), cover: "body", density: 4600, fine: 1, shooting: false });
-    else startStarField(sky, { fade: "landing", density: 4000, fine: 1.2, shooting: true });
-  }
+  // the same sky as creative.lesfleursdelanuit.com: one screen tall at the top, fading out
+  // between 20% and 62% of the way down. It stops drawing once it has scrolled out of view.
+  const sky = document.querySelector<HTMLCanvasElement>("canvas.sky");
+  if (sky) startStarField(sky, { fade: "landing", density: 4000, fine: 1.2, shooting: true });
   document.querySelectorAll<SVGSVGElement>("svg.dahlia").forEach((svg) => mountDahlia(svg));
   requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add("ready")));
 
@@ -35,5 +29,18 @@ export function bootChrome(): { reduced: boolean } {
     );
     reveals.forEach((r) => io.observe(r));
   }
+  count();
   return { reduced };
+}
+
+/**
+ * Visit counting without cookies or third parties: one tiny same-origin image
+ * request per page view, tagged with the page. The numbers come out of the
+ * web server's own access log (scripts/visit-report.sh). Nothing identifies
+ * the visitor; the random number only stops the browser reusing a cached copy.
+ */
+function count(): void {
+  const page = document.documentElement.dataset.page;
+  if (!page) return;
+  new Image().src = `/assets/v.gif?p=${encodeURIComponent(page)}&r=${Math.random().toString(36).slice(2, 8)}`;
 }

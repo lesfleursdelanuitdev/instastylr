@@ -72,6 +72,19 @@ function readStored<T extends string>(key: string, allowed: T[], fallback: T): T
   return fallback;
 }
 
+/**
+ * The landing page's buttons link here with ?theme=dark so a first visit opens
+ * in the look its pictures showed. Only a first visit: a stored choice wins.
+ */
+function themeFromLink(): Theme | null {
+  try {
+    const t = new URLSearchParams(window.location.search).get("theme");
+    return t === "dark" || t === "light" ? t : null;
+  } catch {
+    return null;
+  }
+}
+
 function prefersDark(): boolean {
   try {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -101,7 +114,7 @@ function AppInner() {
   // ── Shell state ─────────────────────────────────────────
   // No stored choice yet → follow the device's light/dark setting.
   const [theme, setTheme] = useState<Theme>(() =>
-    readStored(THEME_KEY, ["light", "dark"], prefersDark() ? "dark" : "light"),
+    readStored(THEME_KEY, ["light", "dark"], themeFromLink() ?? (prefersDark() ? "dark" : "light")),
   );
   const [layout, setLayout] = useState<Layout>(() => readStored(LAYOUT_KEY, ["row", "col"], "row"));
   const [platform, setPlatform] = useState<PlatformId>(() =>

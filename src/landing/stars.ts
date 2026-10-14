@@ -27,7 +27,7 @@ const TINTS = ['255,255,255', '255,196,226', '205,212,255'] as const;
 export interface Star { x: number; y: number; f: number; t: number; s: number; r: number; tint: string }
 export interface Dust { x: number; y: number; f: number; z: number; t: number; s: number; tint: string }
 
-export function makeField(o: { w: number; h: number; dpr: number; density: number; fine: number; fade: (y: number) => number; fadeX?: (x: number) => number; rand?: () => number }): { stars: Star[]; dust: Dust[] } {
+export function makeField(o: { w: number; h: number; dpr: number; density: number; fine: number; fade: (y: number) => number; rand?: () => number }): { stars: Star[]; dust: Dust[] } {
   const rand = o.rand ?? Math.random;
   const W = o.w * o.dpr;
   const H = o.h * o.dpr;
@@ -35,19 +35,17 @@ export function makeField(o: { w: number; h: number; dpr: number; density: numbe
   const stars: Star[] = [];
   for (let i = 0; i < Math.round((o.w * o.h) / o.density); i++) {
     const y = rand() * H;
-    const sx = rand() * W;
-    const f = o.fade(y / H) * (o.fadeX ? o.fadeX(sx / W) : 1);
+    const f = o.fade(y / H);
     if (f <= 0.01) continue;
     const r = Math.round((rand() < 0.07 ? 1.7 : rand() * 0.9 + 0.3) * o.dpr * 4) / 4;
-    stars.push({ x: sx, y, f, t: rand() * 6.3, s: 0.4 + rand() * 1.2, r, tint: tint() });
+    stars.push({ x: rand() * W, y, f, t: rand() * 6.3, s: 0.4 + rand() * 1.2, r, tint: tint() });
   }
   const dust: Dust[] = [];
   for (let i = 0; i < Math.round(((o.w * o.h) / 1000) * o.fine); i++) {
     const y = rand() * H;
-    const dx = rand() * W;
-    const f = o.fade(y / H) * (o.fadeX ? o.fadeX(dx / W) : 1);
+    const f = o.fade(y / H);
     if (f <= 0.01) continue;
-    dust.push({ x: dx, y, f, z: (rand() * 0.7 + 0.45) * o.dpr, t: rand() * 6.3, s: 0.3 + rand() * 0.9, tint: tint() });
+    dust.push({ x: rand() * W, y, f, z: (rand() * 0.7 + 0.45) * o.dpr, t: rand() * 6.3, s: 0.3 + rand() * 0.9, tint: tint() });
   }
   return { stars, dust };
 }
@@ -73,7 +71,7 @@ function sprite(cache: Map<string, HTMLCanvasElement>, tint: string, r: number):
   return c;
 }
 
-export function startStarField(canvas: HTMLCanvasElement, o: { density: number; fine: number; fade: FadeName; fadeX?: (x: number) => number; heightFactor?: number; cover?: string; shooting?: boolean; autostart?: boolean }): { start(): void; stop(): void } {
+export function startStarField(canvas: HTMLCanvasElement, o: { density: number; fine: number; fade: FadeName; heightFactor?: number; cover?: string; shooting?: boolean; autostart?: boolean }): { start(): void; stop(): void } {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const x = canvas.getContext('2d')!;
   const cache = new Map<string, HTMLCanvasElement>();
@@ -90,11 +88,9 @@ export function startStarField(canvas: HTMLCanvasElement, o: { density: number; 
     // `cover`: also stretch to the height of that element (the hero), so a tall phone hero keeps its sky.
     const coverH = o.cover ? (document.querySelector<HTMLElement>(o.cover)?.offsetHeight ?? 0) : 0;
     const h = Math.round(Math.max(document.documentElement.clientHeight * (o.heightFactor ?? 1), coverH));
-    // a strip as tall as the whole page: keep the canvas within what browsers will allocate
-    if (h * dpr > 12000) dpr = 12000 / h;
     W = canvas.width = Math.round(w * dpr); H = canvas.height = Math.round(h * dpr);
     canvas.style.height = `${h}px`;
-    field = makeField({ w, h, dpr, density: o.density, fine: o.fine, fade: fadeFor(o.fade, w), fadeX: o.fadeX });
+    field = makeField({ w, h, dpr, density: o.density, fine: o.fine, fade: fadeFor(o.fade, w) });
   }
   function draw(ts: number) {
     x.clearRect(0, 0, W, H);

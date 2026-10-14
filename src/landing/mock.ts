@@ -203,9 +203,11 @@ export function createMock(parent: HTMLElement, opts: { animate: boolean }): Moc
     copyBtn.classList.toggle("copied", Boolean(state.copied));
 
     const st = statsOf(state);
-    setText(words, `${st.words} ${st.words === 1 ? "word" : "words"}`);
-    setText(chars, `${st.chars} chars`);
-    setText(left, st.left);
+    // Counters tick over on every keystroke: change them plainly, like the app does.
+    // (Cross-fading each new number made the footer flicker while typing.)
+    words.textContent = `${st.words} ${st.words === 1 ? "word" : "words"}`;
+    chars.textContent = `${st.chars} chars`;
+    left.textContent = st.left;
 
     // ── popover: content is kept while it fades out; the highlight slides between items ──
     const p = state.popover;

@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         landing: page("./index.html"),
         app: page("./app/index.html"),
+        notFound: page("./404.html"),
         learn: page("./learn/index.html"),
         learnStyling: page("./learn/styling/index.html"),
         learnLists: page("./learn/lists/index.html"),

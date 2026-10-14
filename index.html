@@ -1,35 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-page="home">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#070B1A" />
+    <meta name="theme-color" content="#050406" />
     <meta name="color-scheme" content="dark" />
-    <title>InstaStylr · Les Fleurs de la Nuit</title>
+    <title>InstaStylr: bold, italic and fancy fonts for Instagram captions</title>
     <meta
       name="description"
-      content="Write a caption with bold, italic, lists, dividers and fancy fonts, then paste it anywhere. InstaStylr turns the styling into plain Unicode text that keeps its look on Instagram, YouTube and TikTok. Free, no account."
+      content="Style your Instagram captions and bio, YouTube captions and LinkedIn posts with bold, italic, lists, dividers and fancy fonts. InstaStylr turns the styling into plain Unicode text that keeps its look when pasted. Free, no account. Made for creators and photographers."
     />
-    <meta property="og:title" content="InstaStylr: captions that keep their style" />
-    <meta property="og:description" content="Bold, italic, lists, dividers and 42 fonts for captions on any platform. Free, works on your phone." />
+    <link rel="canonical" href="https://instastylr.lesfleursdelanuit.com/" />
+    <meta property="og:title" content="InstaStylr: bold, italic and fancy fonts for Instagram captions" />
+    <meta property="og:description" content="Bold, italic, lists, dividers and 42 fonts for Instagram captions and bios, YouTube captions and LinkedIn. Free, works on your phone." />
     <meta property="og:url" content="https://instastylr.lesfleursdelanuit.com/" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="InstaStylr" />
+    <meta property="og:image" content="https://instastylr.lesfleursdelanuit.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="InstaStylr: captions that keep their style. A caption shown plain, then with bold, a divider, flower bullets and italic." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "InstaStylr", "url": "https://instastylr.lesfleursdelanuit.com/", "applicationCategory": "UtilitiesApplication", "operatingSystem": "Any (web browser)", "description": "A text styler for creators and photographers: bold, italic, fonts, lists and dividers as plain Unicode text that keeps its look in Instagram captions and bios, YouTube captions and LinkedIn posts.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Person", "name": "Monica Gonsalves", "url": "https://monicagonsalves.com/"}, "audience": {"@type": "Audience", "audienceType": "Content creators, photographers"}}</script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preload" href="/fonts/bodoni-moda-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/bodoni-moda-latin-opsz-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/landing/fonts/bodoni-moda-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/landing/fonts/bodoni-moda-latin-opsz-italic.woff2" as="font" type="font/woff2" crossorigin />
     <script type="module" src="/src/landing/landing.ts"></script>
   </head>
   <body>
-    <canvas class="sky" data-sky="top" aria-hidden="true"></canvas>
-    <canvas class="sky" data-sky="bottom" aria-hidden="true"></canvas>
-    <canvas class="sky" data-sky="left" aria-hidden="true"></canvas>
-    <canvas class="sky" data-sky="right" aria-hidden="true"></canvas>
+    <canvas class="sky" aria-hidden="true"></canvas>
 
     <header class="nav">
       <a class="brand" href="/"><svg class="dahlia" width="26" height="26" aria-hidden="true"></svg>InstaStylr</a>
       <nav class="links" aria-label="Site">
         <a class="back" href="https://creative.lesfleursdelanuit.com/">← Creative tools</a>
-        <a class="pill" href="/app/">Open the app</a>
+        <a class="pill" href="/app/?theme=dark&amp;from=nav">Open the app</a>
       </nav>
     </header>
 
@@ -40,15 +45,94 @@
           <h1>Captions that keep <em>their style</em></h1>
           <p class="sub">Bold<i>·</i>Italic<i>·</i>Fonts<i>·</i>Lists<i>·</i>Dividers</p>
           <p class="lede">
-            Instagram, YouTube and TikTok strip formatting when you paste. InstaStylr turns yours into Unicode
-            characters that look styled on their own, so the caption arrives the way you wrote it.
+            Bold, italic and fancy fonts for your Instagram captions and bio, your YouTube captions and your LinkedIn.
+            These platforms strip formatting when you paste; InstaStylr turns yours into characters that look styled
+            on their own, so your words arrive the way you wrote them and stand out.
           </p>
           <p class="cta-row">
-            <a class="btn" href="/app/">Open InstaStylr</a>
+            <a class="btn" href="/app/?theme=dark&amp;from=hero">Open InstaStylr</a>
             <span class="cta-note">Free. No account. Works on your phone.</span>
           </p>
         </div>
         <div class="hero-demo mock-slot" data-hero aria-hidden="true"></div>
+      </section>
+
+      <section class="result" aria-labelledby="h-result">
+        <p class="eyebrow reveal">The difference</p>
+        <h2 id="h-result" class="reveal d1">Same words. <em>One gets read.</em></h2>
+        <div class="posts">
+          <figure class="post reveal d1">
+            <figcaption>Pasted from a notes app</figcaption>
+            <div class="post-card">
+              <div class="post-top"><span class="post-avatar"></span><b>lesfleursdelanuit</b></div>
+              <img class="post-photo" src="/src/landing/photos/dahlias-pink.jpg" width="512" height="640" loading="lazy" decoding="async" alt="Two layered pink dahlias lit from behind by warm golden light" />
+              <p class="post-caption" data-caption="plain"></p>
+            </div>
+          </figure>
+          <figure class="post is-styled reveal d2">
+            <figcaption>Pasted from InstaStylr</figcaption>
+            <div class="post-card">
+              <div class="post-top"><span class="post-avatar"></span><b>lesfleursdelanuit</b></div>
+              <img class="post-photo" src="/src/landing/photos/dahlias-pink.jpg" width="512" height="640" loading="lazy" decoding="async" alt="" />
+              <p class="post-caption" data-caption="styled"></p>
+            </div>
+          </figure>
+        </div>
+        <ul class="facts">
+          <li><b data-count="42">42</b><span>fonts</span></li>
+          <li><b data-count="7">7</b><span>platforms' limits counted</span></li>
+          <li><b data-count="0" data-from="24">0</b><span>uploads: it runs in your browser</span></li>
+          <li><b data-count="100" data-suffix="%">100%</b><span>open source</span></li>
+        </ul>
+      </section>
+
+      <section class="compare" aria-labelledby="h-compare">
+        <p class="eyebrow reveal">Not another text generator</p>
+        <h2 id="h-compare" class="reveal d1">An editor, <em>not a copy machine.</em></h2>
+        <p class="compare-lede reveal d1">
+          Most fancy text generators work one phrase at a time. InstaStylr works like the text editor you already
+          know: write the whole thing, then style it.
+        </p>
+        <div class="compare-table reveal d2" role="table" aria-label="A text generator compared with InstaStylr">
+          <div class="compare-row compare-head" role="row">
+            <span role="columnheader">Most text generators</span>
+            <span role="columnheader">InstaStylr</span>
+          </div>
+          <div class="compare-row" role="row">
+            <span role="cell">Type a phrase, generate it, copy it, paste it. Repeat for every line.</span>
+            <span role="cell">Write the whole caption in one place and style it as you go.</span>
+          </div>
+          <div class="compare-row" role="row">
+            <span role="cell">Want a different word bold? Start again.</span>
+            <span role="cell">Select the word and press B.</span>
+          </div>
+          <div class="compare-row" role="row">
+            <span role="cell">Styled letters only.</span>
+            <span role="cell">Bulleted lists and divider lines too.</span>
+          </div>
+          <div class="compare-row" role="row">
+            <span role="cell">Nothing is kept. Retype your camera settings under every post.</span>
+            <span role="cell">Save a post as a template, so the details you add every time are one tap away.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="who" aria-labelledby="h-who">
+        <p class="eyebrow reveal">Made for</p>
+        <h2 id="h-who" class="sr-only">Who InstaStylr is for</h2>
+        <div class="who-grid">
+          <div class="reveal"><h3>Creators</h3><p>A first line that stops the scroll, a bio that reads at a glance, and descriptions with sections people can tell apart.</p></div>
+          <div class="reveal d1"><h3>Photographers</h3><p>Titles in bold, camera settings set apart, a credit line under a divider. A photo caption template is built in.</p></div>
+          <div class="reveal d2"><h3>Anyone who posts</h3><p>If you write on these platforms and want a few words to stand out, it takes a selection and one tap.</p></div>
+        </div>
+        <p class="eyebrow where-label reveal">Use it for</p>
+        <ul class="where reveal d1">
+          <li>Instagram captions</li>
+          <li>Instagram bio</li>
+          <li>YouTube captions</li>
+          <li>LinkedIn posts and profile</li>
+          <li>TikTok, X, Threads, Facebook</li>
+        </ul>
       </section>
 
       <section class="feature" aria-labelledby="h-styles">
@@ -97,22 +181,22 @@
       <section class="feature" aria-labelledby="h-saves">
         <div class="feature-in">
           <div class="copy reveal">
-            <p class="eyebrow">IV<i>·</i>And the rest</p>
-            <h2 id="h-saves">Save it. Count it. <em>Dark mode.</em></h2>
+            <p class="eyebrow">IV<i>·</i>Limits</p>
+            <h2 id="h-saves">Know the limit <em>before you post.</em></h2>
             <p>
-              Name your posts and reopen them later. The counter watches the limit of the platform you pick. Light or
-              dark, your call.
+              A counter shows how many characters are left for Instagram, YouTube, TikTok, X, Threads, Facebook or
+              LinkedIn, and warns you before you run over. Save posts by name to reuse them later.
             </p>
             <a class="more" href="/learn/saving/">Step by step <span aria-hidden="true">→</span></a>
           </div>
-          <div class="mock-slot reveal d1" data-shot="saves:5" aria-hidden="true"></div>
+          <div class="mock-slot reveal d1" data-shot="saves:4" aria-hidden="true"></div>
         </div>
       </section>
 
       <section class="closing">
         <svg class="dahlia reveal" data-variant="colour" width="360" height="360" data-draw aria-hidden="true"></svg>
         <h2 class="reveal d1">Ready when <em>you are.</em></h2>
-        <p class="reveal d2"><a class="btn" href="/app/">Open InstaStylr</a></p>
+        <p class="reveal d2"><a class="btn" href="/app/?theme=dark&amp;from=closing">Open InstaStylr</a></p>
         <p class="cta-note reveal d3">Free. No account. Your posts stay in your browser.</p>
       </section>
     </main>

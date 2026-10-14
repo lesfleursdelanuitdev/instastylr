@@ -23,9 +23,24 @@ test("landing page: only the hero is animated; sections are ordinary blocks with
   expect(await first.evaluate((el) => el.getBoundingClientRect().top)).toBeCloseTo(before - 200, 0);
   expect(await first.locator(".mock-out").innerText()).toBe(shot); // the picture doesn't change
 
+  // The result section: the same caption plain and styled, from the real engine.
+  await expect(page.locator('[data-caption="plain"]')).toContainText("New in the shop");
+  await expect(page.locator('[data-caption="plain"]')).not.toContainText("✿");
+  await expect(page.locator('[data-caption="styled"]')).toContainText("𝐍𝐞𝐰 𝐢𝐧 𝐭𝐡𝐞 𝐬𝐡𝐨𝐩");
+  await expect(page.locator('[data-caption="styled"]')).toContainText("✿ Dahlias, pink");
+  await expect(page.locator(".post-card img.post-photo")).toHaveCount(2);
+  expect(await page.locator(".post-card img.post-photo").first().evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0 || new Promise((r) => (i.onload = () => r(true))))).toBe(true);
+  await expect(page.locator(".places")).toHaveCount(0); // one worked example (the posts) is enough
+  await expect(page.locator(".compare-row:not(.compare-head)")).toHaveCount(4);
+  await expect(page.locator(".compare")).toContainText("Bulleted lists and divider lines too.");
+  await expect(page.locator(".who-grid h3")).toHaveText(["Creators", "Photographers", "Anyone who posts"]);
+  await expect(page.locator(".where li")).toHaveText(["Instagram captions", "Instagram bio", "YouTube captions", "LinkedIn posts and profile", "TikTok, X, Threads, Facebook"]);
+
+  // The button says where it was pressed and asks the app for the dark look the pictures show.
   await page.locator(".closing .btn").click();
-  await expect(page).toHaveURL(/\/app\/$/);
+  await expect(page).toHaveURL(/\/app\/\?theme=dark&from=closing$/);
   await expect(page.locator("#brand")).toContainText("instastylr");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(errors).toEqual([]);
 });
 
@@ -81,14 +96,93 @@ test("tutorials: linked from each section, each page has steps with pictures of 
     expect(await page.locator("[data-shot] .mock").count()).toBeGreaterThanOrEqual(5);
   }
   await page.locator(".closing .btn").click();
-  await expect(page).toHaveURL(/\/app\/$/);
+  await expect(page).toHaveURL(/\/app\/\?theme=dark&from=learn$/);
   expect(errors).toEqual([]);
 });
 
-test("the site sits on the deep blue with radial glows", async ({ page }) => {
+test("the site is ink black with one sky at the top", async ({ page }) => {
   for (const path of ["/", "/learn/styling/"]) {
     await page.goto(path);
-    await expect(page.locator("body")).toHaveCSS("background-color", "rgb(7, 11, 26)");
-    expect(await page.evaluate(() => getComputedStyle(document.body, "::before").backgroundImage)).toContain("radial-gradient");
+    await expect(page.locator("body")).toHaveCSS("background-color", "rgb(5, 4, 6)");
+    await expect(page.locator("canvas")).toHaveCount(1);
+    expect(await page.locator("canvas.sky").evaluate((c) => getComputedStyle(c).position)).toBe("absolute");
   }
+});
+
+test("hero: the mock's footer counters change without animating (no flicker while typing)", async ({ page }) => {
+  await page.goto("/");
+  const res = await page.evaluate(
+    () =>
+      new Promise<{ changes: number; animated: number; minOpacity: number }>((resolve) => {
+        const foot = document.querySelector("[data-hero] .mock-foot")!;
+        let changes = 0, animated = 0, minOpacity = 1, last = foot.textContent;
+        const iv = setInterval(() => {
+          if (foot.textContent !== last) (changes++, (last = foot.textContent));
+          for (const span of foot.querySelectorAll("span")) {
+            animated += span.getAnimations().length;
+            minOpacity = Math.min(minOpacity, Number(getComputedStyle(span).opacity));
+          }
+        }, 16);
+        setTimeout(() => (clearInterval(iv), resolve({ changes, animated, minOpacity })), 5000);
+      }),
+  );
+  expect(res.changes).toBeGreaterThan(5); // the counters did tick while the caption was typed
+  expect(res.animated).toBe(0);
+  expect(res.minOpacity).toBe(1);
+});
+
+test("search and sharing basics: titles, canonical, share image, robots, sitemap, not-found page", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/Instagram captions/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://instastylr.lesfleursdelanuit.com/");
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/og\.png$/);
+  const og = await request.get("/og.png");
+  expect(og.headers()["content-type"]).toBe("image/png");
+  expect((await request.get("/robots.txt")).headers()["content-type"]).toContain("text/plain");
+  const sitemap = await request.get("/sitemap.xml");
+  expect(await sitemap.text()).toContain("<loc>https://instastylr.lesfleursdelanuit.com/learn/styling/</loc>");
+  await page.goto("/learn/lists/");
+  await expect(page).toHaveTitle(/bullet points/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/learn\/lists\/$/);
+  await page.goto("/404.html");
+  await expect(page.locator("h1")).toContainText("Nothing");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
+});
+
+test("each page view asks for one counting pixel tagged with the page", async ({ page }) => {
+  const hits: string[] = [];
+  page.on("request", (r) => r.url().includes("/assets/v.gif") && hits.push(new URL(r.url()).searchParams.get("p") ?? ""));
+  await page.goto("/");
+  await page.goto("/learn/dividers/");
+  await page.waitForTimeout(300);
+  expect(hits).toEqual(["home", "learn-dividers"]);
+});
+
+test("the app: a first visit follows ?theme, a stored choice wins over it", async ({ page }) => {
+  await page.goto("/app/?theme=dark&from=hero");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.locator("#btn-welcome-skip").click();
+  await page.locator("#btn-theme").click(); // choose light
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.goto("/app/?theme=dark&from=nav");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+});
+
+test("the facts row counts up to its numbers when it comes into view", async ({ page }) => {
+  await page.goto("/");
+  const first = page.locator(".facts b").first();
+  await page.locator(".facts").scrollIntoViewIfNeeded();
+  // mid-count it shows something below the target, then settles on the real figures
+  const seen = await first.evaluate(
+    (el) =>
+      new Promise<number[]>((resolve) => {
+        const v: number[] = [];
+        const iv = setInterval(() => v.push(Number(el.textContent)), 40);
+        setTimeout(() => (clearInterval(iv), resolve(v)), 2400);
+      }),
+  );
+  expect(Math.min(...seen)).toBeLessThan(42);
+  expect(seen[seen.length - 1]).toBe(42);
+  await expect(page.locator(".facts b")).toHaveText(["42", "7", "0", "100%"]);
+  expect(await first.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(52);
 });

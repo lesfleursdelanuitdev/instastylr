@@ -1,27 +1,35 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-page="learn-styling">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#070B1A" />
+    <meta name="theme-color" content="#050406" />
     <meta name="color-scheme" content="dark" />
-    <title>Bold, italic and fonts · InstaStylr</title>
+    <title>How to make text bold or italic in an Instagram caption · InstaStylr</title>
     <meta name="description" content="How to make words bold or italic and change the font of a caption in InstaStylr, step by step." />
+    <link rel="canonical" href="https://instastylr.lesfleursdelanuit.com/learn/styling/" />
+    <meta property="og:title" content="How to make text bold or italic in an Instagram caption · InstaStylr" />
+    <meta property="og:description" content="How to make words bold or italic and change the font of a caption in InstaStylr, step by step." />
+    <meta property="og:url" content="https://instastylr.lesfleursdelanuit.com/learn/styling/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="InstaStylr" />
+    <meta property="og:image" content="https://instastylr.lesfleursdelanuit.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="InstaStylr: captions that keep their style. A caption shown plain, then with bold, a divider, flower bullets and italic." />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preload" href="/fonts/bodoni-moda-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/bodoni-moda-latin-opsz-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/landing/fonts/bodoni-moda-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/landing/fonts/bodoni-moda-latin-opsz-italic.woff2" as="font" type="font/woff2" crossorigin />
     <script type="module" src="/src/landing/tutorial.ts"></script>
   </head>
   <body>
-    <canvas class="sky" data-sky="top" aria-hidden="true"></canvas>
-    <canvas class="sky" data-sky="bottom" aria-hidden="true"></canvas>
-    <canvas class="sky" data-sky="left" aria-hidden="true"></canvas>
-    <canvas class="sky" data-sky="right" aria-hidden="true"></canvas>
+    <canvas class="sky" aria-hidden="true"></canvas>
     <header class="nav">
       <a class="brand" href="/"><svg class="dahlia" width="26" height="26" aria-hidden="true"></svg>InstaStylr</a>
       <nav class="links" aria-label="Site">
         <a class="back" href="/learn/">Tutorials</a>
-        <a class="pill" href="/app/">Open the app</a>
+        <a class="pill" href="/app/?theme=dark&amp;from=learn-nav">Open the app</a>
       </nav>
     </header>
     <main class="tut">
@@ -88,7 +96,7 @@
       </nav>
       <section class="closing">
         <h2>Try it <em>yourself.</em></h2>
-        <p><a class="btn" href="/app/">Open InstaStylr</a></p>
+        <p><a class="btn" href="/app/?theme=dark&amp;from=learn">Open InstaStylr</a></p>
       </section>
     </main>
     <footer class="foot">
