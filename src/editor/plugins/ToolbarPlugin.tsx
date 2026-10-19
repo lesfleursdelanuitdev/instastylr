@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $getRoot,
@@ -32,7 +33,20 @@ import {
   parseMarks,
 } from "../fontStyle";
 import { MARKS, cleanMarks } from "../../fonts/marks";
-import { stylePreset } from "../../fonts/uiFonts";
+import { renderUiFont, stylePreset, uiFont } from "../../fonts/uiFonts";
+import {
+  addMyStyle,
+  defaultStyleName,
+  loadMyStyles,
+  removeMyStyle,
+  renameMyStyle,
+  saveProblem,
+  styleNameProblem,
+  type MyStyle,
+  type StyleParts,
+} from "../../fonts/myStyles";
+import { StyleNameDialog, type StyleNameRequest } from "../../ui/StyleNameDialog";
+import { ConfirmDialog, type ConfirmRequest } from "../../ui/ConfirmDialog";
 import { STYLE_PRESETS } from "../../fonts/scraped/presets";
 import { MarksMenu, type MarkState } from "../../ui/MarksMenu";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
@@ -52,13 +66,22 @@ const MIXED_FONT = ""; // sentinel: selection spans more than one font
 const NO_MARKS = "none";
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-/** The preset (font + bold/italic + marks) the text is in, if it is exactly one. */
-function presetFor(fontId: string, bold: boolean, italic: boolean, marks: readonly string[]): string | null {
+/**
+ * The style (font + bold/italic + marks) the text is in, if it is exactly one:
+ * the user's own first, then a built-in preset (those always have marks).
+ */
+function presetFor(
+  fontId: string,
+  bold: boolean,
+  italic: boolean,
+  marks: readonly string[],
+  mine: readonly MyStyle[],
+): string | null {
+  const same = (x: StyleParts) => x.font === fontId && x.bold === bold && x.italic === italic && sameList(x.marks, marks);
+  const m = mine.find(same);
+  if (m) return m.id;
   if (!marks.length) return null;
-  const p = STYLE_PRESETS.find(
-    (x) => x.font === fontId && x.bold === bold && x.italic === italic && sameList(x.marks, marks),
-  );
-  return p?.id ?? null;
+  return STYLE_PRESETS.find(same)?.id ?? null;
 }
 
 /** Reduce a format bit across selected text nodes to a tri-state value. */
@@ -128,6 +151,9 @@ export function ToolbarPlugin({
   const [fontPanelOpen, setFontPanelOpen] = useState(false);
   const [panelSample, setPanelSample] = useState<PanelSample | null>(null);
   const [recent, setRecent] = useState<string[]>(() => loadRecentFonts());
+  const [myStyles, setMyStyles] = useState<MyStyle[]>(() => loadMyStyles());
+  const [nameRequest, setNameRequest] = useState<StyleNameRequest | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const openFontPanel = () => {
     // The panel previews whatever is selected (one line, kept short), else a stock sample.
     const raw = editor.getEditorState().read(() => {
@@ -232,7 +258,7 @@ export function ToolbarPlugin({
    * bold/italic exactly and replaces the marks; a plain font leaves both alone.
    */
   const applyStyle = (id: string) => {
-    const p = stylePreset(id);
+    const p = stylePreset(id, myStyles);
     if (p) applyFont(p.font, { bold: p.bold, italic: p.italic, marks: p.marks, recordAs: p.id });
     else applyFont(id);
   };
@@ -337,7 +363,72 @@ export function ToolbarPlugin({
   const currentStyleId =
     fontId === MIXED_FONT
       ? null
-      : (uniformMarks && presetFor(fontId, bold === "on", italic === "on", uniformMarks)) || fontId;
+      : (uniformMarks && presetFor(fontId, bold === "on", italic === "on", uniformMarks, myStyles)) || fontId;
+
+  // The look to save: one font, bold/italic and marks across the whole selection.
+  const saveParts: StyleParts | null =
+    fontId !== MIXED_FONT && bold !== "mixed" && italic !== "mixed" && uniformMarks
+      ? { font: fontId, bold: bold === "on", italic: italic === "on", marks: uniformMarks }
+      : null;
+
+  const lookPreview = (p: StyleParts) =>
+    renderUiFont({ ...uiFont(p.font)!, preset: { id: "", label: "", ...p } }, "Your style");
+
+  const openSaveStyle = () => {
+    if (!saveParts) return;
+    const parts = saveParts;
+    // A built-in preset's name is a better start than the parts list.
+    const builtIn = presetFor(parts.font, parts.bold, parts.italic, parts.marks, []);
+    setNameRequest({
+      title: "Save as my style",
+      preview: lookPreview(parts),
+      initialName: (builtIn && stylePreset(builtIn)?.label) || defaultStyleName(parts),
+      saveLabel: "Save style",
+      blocked: saveProblem(parts, myStyles),
+      checkName: (name) => styleNameProblem(name, myStyles),
+      onSave: (name) => {
+        const r = addMyStyle(name, parts);
+        if (r.ok) {
+          setMyStyles(r.styles);
+          setRecent(recordFontUse(r.style.id, recent));
+        }
+      },
+    });
+  };
+
+  const openRename = (id: string) => {
+    const style = myStyles.find((s) => s.id === id);
+    if (!style) return;
+    setNameRequest({
+      title: "Rename style",
+      preview: lookPreview(style),
+      initialName: style.label,
+      saveLabel: "Rename",
+      checkName: (name) => styleNameProblem(name, myStyles, id),
+      onSave: (name) => {
+        const r = renameMyStyle(id, name);
+        if (r.ok) setMyStyles(r.styles);
+      },
+    });
+  };
+
+  const openDelete = (id: string) => {
+    const style = myStyles.find((s) => s.id === id);
+    if (!style) return;
+    setConfirm({
+      title: "Delete this style?",
+      message: `“${style.label}” will be gone from your styles. Text already in it keeps its look.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+      onConfirm: () => setMyStyles(removeMyStyle(id)),
+    });
+  };
+
+  const closeNameDialog = () => {
+    setNameRequest(null);
+    // Opened from the menu: back to the text. From the panel: the panel keeps focus.
+    if (!fontPanelOpen) editor.focus();
+  };
 
   const toggleBullet = () => {
     editor.dispatchCommand(
@@ -409,7 +500,10 @@ export function ToolbarPlugin({
       <FontMenu
         fontId={currentStyleId}
         recent={recent}
+        mine={myStyles}
+        canSave={saveParts !== null}
         onPick={applyStyle}
+        onSave={openSaveStyle}
         onMore={openFontPanel}
       />
       <FontPanel
@@ -417,12 +511,18 @@ export function ToolbarPlugin({
         fontId={currentStyleId}
         sample={panelSample}
         recent={recent}
+        mine={myStyles}
+        paused={nameRequest !== null || confirm !== null}
         onPick={(id) => {
           setFontPanelOpen(false);
           applyStyle(id);
         }}
+        onRename={openRename}
+        onDelete={openDelete}
         onClose={closeFontPanel}
       />
+      <StyleNameDialog request={nameRequest} onClose={closeNameDialog} />
+      {createPortal(<ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />, document.body)}
 
       <MoreMenu
         listType={listType}

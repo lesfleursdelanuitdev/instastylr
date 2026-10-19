@@ -158,6 +158,9 @@ function styleOf(table) {
   if (share((v) => [...bare(v)].length > 1) > 0.8) return "boxed";
   return "lookalike";
 }
+// Combining marks left out wherever they appear (checked in a browser 2026-10-19).
+const UNDRAWN_MARKS = [{ char: "\u20EB", name: "the long double slash (U+20EB)" }];
+
 // Where the rule above guesses wrong.
 const STYLE_OVERRIDES = {};
 
@@ -260,6 +263,12 @@ for (const src of SOURCES) {
         as: `${prev.k.label} (${prev.k.site})`,
         differing: LETTERS.filter((c) => prev.k.table[c] !== table[c]),
       });
+      continue;
+    }
+    // Marks most phones and desktop browsers can't draw: the style would look plain.
+    const unseen = UNDRAWN_MARKS.find((m) => CHARS.some((c) => table[c].includes(m.char)));
+    if (unseen) {
+      report.leftOut.push({ name, why: `uses ${unseen.name}, which most phones and browsers don't draw` });
       continue;
     }
     // (Checked after the earlier sites, so a plain-plus-mark style LingoJam already

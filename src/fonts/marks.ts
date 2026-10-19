@@ -39,7 +39,6 @@ export const MARKS: Mark[] = [
   m("slash", "Slash", 0x0338, "through"),
   m("wavyStrike", "Wavy strike", 0x0334, "through"),
   m("backslash", "Backslash", 0x20e5, "through"),
-  m("doubleSlash", "Double slash", 0x20eb, "through"),
   m("arrowThrough", "Arrow", 0x20ea, "through"),
 
   m("underline", "Underline", 0x0332, "under"),

@@ -8,6 +8,7 @@
 import { FONTS, SCRAPED_FONTS, getFont } from "./mappings";
 import { transformRun } from "./transform";
 import { STYLE_PRESETS, type StylePreset } from "./scraped/presets";
+import type { MyStyle } from "./myStyles";
 
 export type UiFont = {
   id: string;
@@ -21,6 +22,8 @@ export type UiFont = {
   boldItalic: boolean;
   /** Set for a preset: one of the fonts plus bold/italic and marks, under a site's name. */
   preset?: StylePreset;
+  /** One of the user's own saved styles (fonts/myStyles.ts). */
+  mine?: boolean;
 };
 
 /** Friendlier names than the engine's for the hand-built fonts. */
@@ -83,8 +86,9 @@ for (const f of SCRAPED_FONTS)
 
 const PRESET_BY_ID = new Map(STYLE_PRESETS.map((p) => [p.id, p]));
 
-export function stylePreset(id: string): StylePreset | undefined {
-  return PRESET_BY_ID.get(id);
+/** A built-in preset or one of the user's saved styles (`mine`), by id. */
+export function stylePreset(id: string, mine: readonly MyStyle[] = []): StylePreset | undefined {
+  return mine.find((s) => s.id === id) ?? PRESET_BY_ID.get(id);
 }
 
 /**
@@ -129,8 +133,39 @@ export const PANEL_FONTS: UiFont[] = [...ALL_UI_FONTS, ...PRESET_UI_FONTS];
 
 const FONT_BY_ID = new Map(PANEL_FONTS.map((f) => [f.id, f]));
 
-export function uiFont(id: string): UiFont | undefined {
+/** The user's saved styles as list entries, grouped by the look of their font (Marked if they add marks). */
+export function myStyleUiFonts(mine: readonly MyStyle[]): UiFont[] {
+  return mine.map((p) => ({
+    id: p.id,
+    label: p.label,
+    preview: transformRun({ text: "Aa", fontId: p.font, bold: p.bold, italic: p.italic, marks: p.marks }),
+    style: p.marks.length ? "marked" : (STYLE_BY_ID[p.font] ?? "classic"),
+    bold: false,
+    italic: false,
+    boldItalic: false,
+    preset: p,
+    mine: true,
+  }));
+}
+
+/** What the font panel lists with the user's styles: theirs first, then every font and preset. */
+export function panelFonts(mine: readonly MyStyle[]): UiFont[] {
+  return [...myStyleUiFonts(mine), ...PANEL_FONTS];
+}
+
+export function uiFont(id: string, mine: readonly MyStyle[] = []): UiFont | undefined {
+  if (id.startsWith("my-")) return myStyleUiFonts(mine.filter((s) => s.id === id))[0];
   return FONT_BY_ID.get(id);
+}
+
+/**
+ * Sample text for a list entry: a preset or saved style in its own look, a plain
+ * font with the given bold/italic (where it has them).
+ */
+export function renderUiFont(f: UiFont, text: string, bold = false, italic = false): string {
+  const p = f.preset;
+  if (p) return transformRun({ text, fontId: p.font, bold: p.bold, italic: p.italic, marks: p.marks });
+  return transformRun({ text, fontId: f.id, bold, italic });
 }
 
 /** The toolbar menu's short list: the four everyday fonts, which are also the only ones with bold or italic. */
@@ -150,8 +185,8 @@ export const FONT_FEATURES: { id: FontFeature; label: string }[] = [
   { id: "boldItalic", label: "Bold + italic" },
 ];
 
-/** "recent" = the fonts in `recent` (ids, newest first), shown in that order. */
-export type FontFilter = { style: FontStyle | "all" | "recent"; feature: FontFeature; recent?: string[] };
+/** "recent" = the fonts in `recent` (ids, newest first), shown in that order; "mine" = the user's saved styles. */
+export type FontFilter = { style: FontStyle | "all" | "recent" | "mine"; feature: FontFeature; recent?: string[] };
 
 export function filterFonts(fonts: UiFont[], filter: FontFilter): UiFont[] {
   const has = (f: UiFont) => filter.feature === "any" || f[filter.feature];
@@ -159,16 +194,23 @@ export function filterFonts(fonts: UiFont[], filter: FontFilter): UiFont[] {
     const byId = new Map(fonts.map((f) => [f.id, f]));
     return (filter.recent ?? []).map((id) => byId.get(id)).filter((f): f is UiFont => Boolean(f) && has(f!));
   }
+  if (filter.style === "mine") return fonts.filter((f) => f.mine && has(f));
   return fonts.filter((f) => (filter.style === "all" || f.style === filter.style) && has(f));
 }
 
-/** For the toolbar menu: the newest recently used fonts that aren't already in its short list. */
+/** For the toolbar menu: the user's newest saved styles. */
+export const MENU_MY_STYLES_MAX = 5;
+export function menuMyStyles(mine: readonly MyStyle[]): UiFont[] {
+  return myStyleUiFonts(mine.slice(0, MENU_MY_STYLES_MAX));
+}
+
+/** For the toolbar menu: the newest recently used fonts that aren't already shown above them. */
 export const MENU_RECENT_MAX = 5;
-export function menuRecentFonts(recent: string[]): UiFont[] {
-  const quick = new Set(QUICK_FONTS.map((f) => f.id));
+export function menuRecentFonts(recent: string[], mine: readonly MyStyle[] = []): UiFont[] {
+  const shown = new Set([...QUICK_FONTS, ...menuMyStyles(mine)].map((f) => f.id));
   return recent
-    .filter((id) => !quick.has(id))
-    .map((id) => FONT_BY_ID.get(id))
+    .filter((id) => !shown.has(id))
+    .map((id) => uiFont(id, mine))
     .filter((f): f is UiFont => Boolean(f))
     .slice(0, MENU_RECENT_MAX);
 }

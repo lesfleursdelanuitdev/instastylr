@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { QUICK_FONTS, menuRecentFonts, uiFont } from "../fonts/uiFonts";
+import { QUICK_FONTS, menuMyStyles, menuRecentFonts, uiFont } from "../fonts/uiFonts";
+import type { MyStyle } from "../fonts/myStyles";
 
 const Chevron = (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
@@ -7,27 +8,39 @@ const Chevron = (
 const Check = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
 );
+const Plus = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+);
 const Arrow = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18" /></svg>
 );
 
 /**
  * The toolbar's font control: a button showing the current font, opening a short
- * menu of the everyday fonts plus "More fonts…", which hands over to the font
- * panel. (A native <select> can't hold that last item as a real button.)
+ * menu of the user's saved styles, the everyday fonts, recent ones, "Save as my
+ * style…" and "More fonts…", which hands over to the font panel. (A native
+ * <select> can't hold those last items as real buttons.)
  *
  * `fontId` null means the selection spans several fonts.
  */
 export function FontMenu({
   fontId,
   recent,
+  mine,
+  canSave,
   onPick,
+  onSave,
   onMore,
 }: {
   fontId: string | null;
   /** Recently applied font ids, newest first (see fonts/recent.ts). */
   recent: string[];
+  /** The user's saved styles, newest first (see fonts/myStyles.ts). */
+  mine: MyStyle[];
+  /** False when the selection mixes looks, so there is no one style to save. */
+  canSave: boolean;
   onPick: (fontId: string) => void;
+  onSave: () => void;
   onMore: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -35,10 +48,11 @@ export function FontMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const current = fontId === null ? undefined : uiFont(fontId);
+  const current = fontId === null ? undefined : uiFont(fontId, mine);
   // Keep the editor's selection alive while the menu is used with a pointer.
   const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
-  const recentFonts = menuRecentFonts(recent);
+  const myFonts = menuMyStyles(mine);
+  const recentFonts = menuRecentFonts(recent, mine);
 
   const option = (f: { id: string; preview: string; label: string }) => (
     <button
@@ -132,6 +146,17 @@ export function FontMenu({
       </button>
       {open && (
         <div id="font-menu" ref={menuRef} role="listbox" aria-label="Font" onKeyDown={onMenuKey}>
+          {myFonts.length > 0 && (
+            <>
+              <div className="font-menu-heading" id="font-menu-mine-heading">
+                My styles
+              </div>
+              <div role="group" aria-labelledby="font-menu-mine-heading" className="font-menu-recent font-menu-mine">
+                {myFonts.map(option)}
+              </div>
+              <div className="font-menu-sep" role="separator" />
+            </>
+          )}
           {QUICK_FONTS.map(option)}
           {recentFonts.length > 0 && (
             <>
@@ -145,6 +170,24 @@ export function FontMenu({
             </>
           )}
           <div className="font-menu-sep" role="separator" />
+          <button
+            type="button"
+            id="btn-save-style"
+            className="font-option"
+            aria-disabled={canSave ? undefined : "true"}
+            onMouseDown={noFocusSteal}
+            onClick={() => {
+              if (!canSave) return;
+              setOpen(false);
+              onSave();
+            }}
+          >
+            <span className="font-option-label">
+              Save as my style…
+              {!canSave && <span className="font-option-note">Select text in one look to save it</span>}
+            </span>
+            <span className="font-option-check">{Plus}</span>
+          </button>
           <button
             type="button"
             id="btn-more-fonts"

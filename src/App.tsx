@@ -153,7 +153,7 @@ function AppInner() {
 
   const contentRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0, h: 220, pct: 55 });
+  const dragStart = useRef({ x: 0, y: 0, h: 220, pct: 55, maxH: 0 });
 
   const showToast = useCallback(
     (msg: string, action?: { label: string; onClick: () => void }) => {
@@ -292,7 +292,21 @@ function AppInner() {
   // ── Drag handle (resize output height / editor width) ───
   const startDrag = (clientX: number, clientY: number) => {
     draggingRef.current = true;
-    dragStart.current = { x: clientX, y: clientY, h: outputHeight, pct: editorWidthPct };
+    // The output can only grow by as much as the editor can shrink (down to its
+    // text, and never under its 160px floor). Past that the page would grow taller
+    // than the window, and the scrollbar that brings narrows the page under
+    // anything sized to the old width (extension overlays like Grammarly's).
+    const wrap = document.getElementById("editor-wrap");
+    const ed = wrap?.querySelector<HTMLElement>(".editor");
+    let room = 0;
+    // Already scrolling (a long post): the scrollbar is there anyway, keep the old limit.
+    if (document.documentElement.scrollHeight > window.innerHeight + 1) room = Infinity;
+    else if (wrap && ed) {
+      const cs = getComputedStyle(wrap);
+      const natural = ed.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      room = Math.max(0, wrap.clientHeight - Math.max(parseFloat(cs.minHeight) || 0, natural));
+    }
+    dragStart.current = { x: clientX, y: clientY, h: outputHeight, pct: editorWidthPct, maxH: outputHeight + room };
     setHandleDragging(true);
     document.body.style.cursor = layout === "col" ? "ew-resize" : "ns-resize";
     document.body.style.userSelect = "none";
@@ -309,7 +323,8 @@ function AppInner() {
         setEditorWidthPct(pct);
       } else {
         const dy = dragStart.current.y - clientY;
-        setOutputHeight(Math.max(60, Math.min(window.innerHeight * 0.75, dragStart.current.h + dy)));
+        const max = Math.max(dragStart.current.h, Math.min(window.innerHeight * 0.75, dragStart.current.maxH));
+        setOutputHeight(Math.max(60, Math.min(max, dragStart.current.h + dy)));
       }
     };
     const onMouseMove = (e: MouseEvent) => move(e.clientX, e.clientY);
