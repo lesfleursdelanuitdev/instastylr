@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { TIP_CLASSES, type TipClassId, loadDismissed, reenableTip, dismissTip, resetTips } from "../tips";
 import { PLATFORMS, type PlatformId, platformById } from "../platforms";
 
@@ -17,6 +17,7 @@ type Layout = "row" | "col";
  */
 export function SettingsPanel({
   open,
+  fromMenu = false,
   onClose,
   theme,
   onTheme,
@@ -26,6 +27,8 @@ export function SettingsPanel({
   onPlatform,
 }: {
   open: boolean;
+  /** Opened from the side menu: show the dim overlay at once, in place of the menu's. */
+  fromMenu?: boolean;
   onClose: () => void;
   theme: Theme;
   onTheme: (t: Theme) => void;
@@ -39,7 +42,9 @@ export function SettingsPanel({
   // Local mirror of the dismissed-tips set so toggles re-render immediately.
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
 
-  useEffect(() => {
+  // Layout effect: mount before the next paint, so when the panel is opened from
+  // the menu its dim overlay is there in the same frame the menu's goes.
+  useLayoutEffect(() => {
     if (open) {
       setRender(true);
       setDismissed(loadDismissed());
@@ -68,7 +73,7 @@ export function SettingsPanel({
     <>
       <div
         id="settings-overlay"
-        className={`overlay-scrim${shown ? " visible" : ""}`}
+        className={`overlay-scrim${shown || fromMenu ? " visible" : ""}${fromMenu ? " instant" : ""}`}
         onClick={onClose}
       />
       <div id="settings-panel" className={shown ? "open" : ""} role="dialog" aria-label="Settings">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type SavedPost, formatDate } from "../saves";
 
 const TrashIcon = (
@@ -15,6 +15,7 @@ const CloseIcon = (
  */
 export function SavesPanel({
   open,
+  fromMenu = false,
   saves,
   docId,
   docName,
@@ -26,6 +27,8 @@ export function SavesPanel({
   onDelete,
 }: {
   open: boolean;
+  /** Opened from the side menu: show the dim overlay at once, in place of the menu's. */
+  fromMenu?: boolean;
   saves: SavedPost[];
   /** Currently-bound post id, or null when editing an untitled draft. */
   docId: string | null;
@@ -42,7 +45,9 @@ export function SavesPanel({
   const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Layout effect: mount before the next paint, so when the panel is opened from
+  // the menu its dim overlay is there in the same frame the menu's goes.
+  useLayoutEffect(() => {
     if (open) {
       setRender(true);
       // two frames, so it is painted parked before it slides (see FontPanel)
@@ -74,7 +79,7 @@ export function SavesPanel({
     <>
       <div
         id="saves-overlay"
-        className={render ? `open${shown ? " visible" : ""}` : ""}
+        className={render ? `open${shown || fromMenu ? " visible" : ""}${fromMenu ? " instant" : ""}` : ""}
         onClick={onClose}
       />
       <div id="saves-panel" className={shown ? "open" : ""}>

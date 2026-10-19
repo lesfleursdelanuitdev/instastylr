@@ -140,6 +140,9 @@ function AppInner() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // True while a panel picked from the menu slides in over it (see handOffMenu).
+  const [menuCovered, setMenuCovered] = useState(false);
+  const handoffTimer = useRef<number | undefined>(undefined);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 
@@ -489,17 +492,32 @@ function AppInner() {
   );
 
   // Overlays are mutually exclusive — opening one closes the others.
+  // From the menu, the new panel slides in over it: the menu stays still and keeps
+  // its place until covered, then goes without animating; one dim overlay throughout.
+  const handOffMenu = () => {
+    if (!menuOpen) return;
+    setMenuCovered(true);
+    window.clearTimeout(handoffTimer.current);
+    handoffTimer.current = window.setTimeout(() => setMenuOpen(false), 340); // panel slide + 2 frames
+  };
+  useEffect(() => {
+    if (!menuOpen) setMenuCovered(false);
+  }, [menuOpen]);
+  useEffect(() => () => window.clearTimeout(handoffTimer.current), []);
+
   const openSaves = () => {
     setSettingsOpen(false);
-    setMenuOpen(false);
+    handOffMenu();
     setPanelOpen(true);
   };
   const openSettings = () => {
     setPanelOpen(false);
-    setMenuOpen(false);
+    handOffMenu();
     setSettingsOpen(true);
   };
   const openMenu = () => {
+    window.clearTimeout(handoffTimer.current);
+    setMenuCovered(false);
     setPanelOpen(false);
     setSettingsOpen(false);
     setMenuOpen(true);
@@ -727,8 +745,18 @@ function AppInner() {
           closeWelcome();
         }}
       />
+      {/* Before the panels, so a panel picked from it stacks on top. */}
+      <SideMenu
+        open={menuOpen}
+        covered={menuCovered}
+        onClose={() => setMenuOpen(false)}
+        onOpenSaves={openSaves}
+        onOpenSettings={openSettings}
+        onShowWelcome={() => setWelcomeOpen(true)}
+      />
       <SavesPanel
         open={panelOpen}
+        fromMenu={menuCovered}
         saves={saves}
         docId={docId}
         docName={docName}
@@ -741,6 +769,7 @@ function AppInner() {
       />
       <SettingsPanel
         open={settingsOpen}
+        fromMenu={menuCovered}
         onClose={() => setSettingsOpen(false)}
         theme={theme}
         onTheme={setTheme}
@@ -748,13 +777,6 @@ function AppInner() {
         onLayout={setLayout}
         platform={platform}
         onPlatform={setPlatform}
-      />
-      <SideMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onOpenSaves={openSaves}
-        onOpenSettings={openSettings}
-        onShowWelcome={() => setWelcomeOpen(true)}
       />
       <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
       <div id="toast" className={`${toastShow ? "show" : ""}${toast.action ? " has-action" : ""}`}>

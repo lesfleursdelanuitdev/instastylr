@@ -1125,6 +1125,8 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   z-index: 100; opacity: 0; transition: opacity 0.25s ease;
 }
 .overlay-scrim.visible { opacity: 1; }
+/* Menu → panel hand-off: one overlay swaps for the other in the same frame. */
+.overlay-scrim.instant, #saves-overlay.instant { transition: none; }
 
 #settings-panel, #side-menu {
   position: fixed; top: 0; right: 0; bottom: 0;
