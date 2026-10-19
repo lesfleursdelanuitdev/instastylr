@@ -12,7 +12,21 @@
  * `exceptions` and MUST override the offset, or real words render as tofu.
  */
 
-import { LINGOJAM_FONTS } from "./scraped/lingojam";
+import { LINGOJAM_FONTS, type ScrapedFont } from "./scraped/lingojam";
+import { PICSART_FONTS } from "./scraped/picsart";
+import { GLYPHY_FONTS } from "./scraped/glyphy";
+
+/** Every scraped look-alike table, in the order the sites were read. */
+export const SCRAPED_FONTS: ScrapedFont[] = [...LINGOJAM_FONTS, ...PICSART_FONTS, ...GLYPHY_FONTS];
+
+/**
+ * Small caps as in print: capitals stay, lower-case letters become small
+ * capitals. Built from "tiny" (all small capitals), which keeps its own entry.
+ */
+const TINY = LINGOJAM_FONTS.find((f) => f.id === "tiny")!.map;
+const SMALL_CAPS: Record<string, string> = Object.fromEntries(
+  Object.entries(TINY).filter(([k]) => k >= "a" && k <= "z"),
+);
 
 /** A built variant is a per-character lookup, or null meaning "pass through". */
 export type VariantMap = Map<string, string> | null;
@@ -105,8 +119,9 @@ const VARIANT_DESCRIPTORS: Record<string, VariantDesc> = {
   // Scraped lookup tables (src/fonts/scraped/), prefixed so a scraped name can
   // never shadow a variant above.
   ...Object.fromEntries(
-    LINGOJAM_FONTS.map((f): [string, VariantDesc] => [scrapedVariant(f.id), { kind: "table", map: f.map }]),
+    SCRAPED_FONTS.map((f): [string, VariantDesc] => [scrapedVariant(f.id), { kind: "table", map: f.map }]),
   ),
+  smallCaps: { kind: "table", map: SMALL_CAPS },
 };
 
 // ---------------------------------------------------------------------------
@@ -197,7 +212,11 @@ export const BASE_FONTS: FontDef[] = [
 /** Everything usable: the base fonts, then the scraped look-alike tables (no bold/italic). */
 export const FONTS: FontDef[] = [
   ...BASE_FONTS,
-  ...LINGOJAM_FONTS.map((f) => ({ id: f.id, label: f.label, variants: { regular: scrapedVariant(f.id) } })),
+  ...SCRAPED_FONTS.flatMap((f) => [
+    // listed next to its all-small-capitals source
+    ...(f.id === "tiny" ? [{ id: "smallCaps", label: "Small Caps", variants: { regular: "smallCaps" } }] : []),
+    { id: f.id, label: f.label, variants: { regular: scrapedVariant(f.id) } },
+  ]),
 ];
 
 const FONT_BY_ID = new Map(FONTS.map((f) => [f.id, f]));

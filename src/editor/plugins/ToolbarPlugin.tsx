@@ -22,7 +22,19 @@ import {
   REMOVE_LIST_COMMAND,
 } from "@lexical/list";
 import { $createDividerNode } from "../nodes/DividerNode";
-import { FONT_STYLE_PROP, fontIdFromStyle, isKnownFont } from "../fontStyle";
+import {
+  FONT_STYLE_PROP,
+  MARKS_STYLE_PROP,
+  fontIdFromStyle,
+  isKnownFont,
+  marksFromStyle,
+  marksStyleValue,
+  parseMarks,
+} from "../fontStyle";
+import { MARKS, cleanMarks } from "../../fonts/marks";
+import { stylePreset } from "../../fonts/uiFonts";
+import { STYLE_PRESETS } from "../../fonts/scraped/presets";
+import { MarksMenu, type MarkState } from "../../ui/MarksMenu";
 import { supportsBold, supportsItalic } from "../../fonts/mappings";
 import { FontMenu } from "../../ui/FontMenu";
 import { FontPanel, type PanelSample } from "../../ui/FontPanel";
@@ -35,6 +47,19 @@ type Layout = "row" | "col";
 /** A format axis (bold/italic) across the selection: all / none / some. */
 type Tri = "on" | "off" | "mixed";
 const MIXED_FONT = ""; // sentinel: selection spans more than one font
+// Stands in for "no marks" inside a style patch function (which can't remove a
+// property); cleared off the nodes straight after.
+const NO_MARKS = "none";
+const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+/** The preset (font + bold/italic + marks) the text is in, if it is exactly one. */
+function presetFor(fontId: string, bold: boolean, italic: boolean, marks: readonly string[]): string | null {
+  if (!marks.length) return null;
+  const p = STYLE_PRESETS.find(
+    (x) => x.font === fontId && x.bold === bold && x.italic === italic && sameList(x.marks, marks),
+  );
+  return p?.id ?? null;
+}
 
 /** Reduce a format bit across selected text nodes to a tri-state value. */
 function triState(nodes: { hasFormat: (f: TextFormatType) => boolean }[], fmt: TextFormatType): Tri {
@@ -96,6 +121,9 @@ export function ToolbarPlugin({
   const [boldAvail, setBoldAvail] = useState(true);
   const [italicAvail, setItalicAvail] = useState(true);
   const [fontId, setFontId] = useState("serif");
+  const [markState, setMarkState] = useState<Record<string, MarkState>>({});
+  /** The marks when the whole selection has the same ones (else null). */
+  const [uniformMarks, setUniformMarks] = useState<string[] | null>([]);
   const [listType, setListType] = useState<ListState>(null);
   const [fontPanelOpen, setFontPanelOpen] = useState(false);
   const [panelSample, setPanelSample] = useState<PanelSample | null>(null);
@@ -146,6 +174,18 @@ export function ToolbarPlugin({
       collapsed ? (selection.hasFormat("italic") ? "on" : "off") : triState(textNodes, "italic"),
     );
 
+    // Marks: each one on / off / mixed across the selection, like bold.
+    const markSets = collapsed
+      ? [parseMarks($getSelectionStyleValueForProperty(selection, MARKS_STYLE_PROP, ""))]
+      : textNodes.map((n) => marksFromStyle(n.getStyle()));
+    const next: Record<string, MarkState> = {};
+    for (const m of MARKS) {
+      const n = markSets.filter((set) => set.includes(m.id)).length;
+      if (n) next[m.id] = n === markSets.length ? "on" : "mixed";
+    }
+    setMarkState(next);
+    setUniformMarks(markSets.every((set) => sameList(set, markSets[0])) ? markSets[0] : null);
+
     const list = $getNearestNodeOfType(selection.anchor.getNode(), ListNode);
     setListType(list ? (list.getListType() === "number" ? "number" : "bullet") : null);
   }, []);
@@ -187,7 +227,20 @@ export function ToolbarPlugin({
 
   useEffect(() => onActiveFontChange(fontId), [fontId, onActiveFontChange]);
 
-  const applyFont = (nextFontId: string) => {
+  /**
+   * Put the selection (or the caret's next typing) in a font. A preset also sets
+   * bold/italic exactly and replaces the marks; a plain font leaves both alone.
+   */
+  const applyStyle = (id: string) => {
+    const p = stylePreset(id);
+    if (p) applyFont(p.font, { bold: p.bold, italic: p.italic, marks: p.marks, recordAs: p.id });
+    else applyFont(id);
+  };
+
+  const applyFont = (
+    nextFontId: string,
+    opts: { bold?: boolean; italic?: boolean; marks?: string[]; recordAs?: string } = {},
+  ) => {
     const stripBold = !supportsBold(nextFontId);
     const stripItalic = !supportsItalic(nextFontId);
     let strippedBold = false;
@@ -225,13 +278,66 @@ export function ToolbarPlugin({
       };
       if (stripBold) strippedBold = clear("bold");
       if (stripItalic) strippedItalic = clear("italic");
+
+      // A preset's own bold/italic (only where the font has them).
+      const set = (fmt: TextFormatType, want: boolean) => {
+        if (collapsed) {
+          if (selection.hasFormat(fmt) !== want) selection.toggleFormat(fmt);
+          return;
+        }
+        for (const n of selection.getNodes().filter($isTextNode)) if (n.hasFormat(fmt) !== want) n.toggleFormat(fmt);
+      };
+      if (opts.bold !== undefined) set("bold", opts.bold && !stripBold);
+      if (opts.italic !== undefined) set("italic", opts.italic && !stripItalic);
+      if (opts.marks) $patchStyleText(selection, { [MARKS_STYLE_PROP]: marksStyleValue(opts.marks) });
     });
 
     setFontId(nextFontId);
-    setRecent(recordFontUse(nextFontId));
+    setRecent(recordFontUse(opts.recordAs ?? nextFontId));
     editor.focus();
     if (strippedBold || strippedItalic) onStripFormats(nextFontId, strippedBold, strippedItalic);
   };
+
+  /** Turn a mark on for the whole selection, or off when all of it has it already. */
+  const updateMarks = (change: (ids: string[], allHave: boolean) => string[], markId?: string) => {
+    editor.update(() => {
+      let selection = $getSelection();
+      if (!$isRangeSelection(selection)) {
+        $getRoot().selectEnd();
+        selection = $getSelection();
+      }
+      if (!$isRangeSelection(selection)) return;
+      const nodes = selection.getNodes().filter($isTextNode);
+      if (selection.isCollapsed() || nodes.length === 0) {
+        const cur = parseMarks($getSelectionStyleValueForProperty(selection, MARKS_STYLE_PROP, ""));
+        const allHave = markId ? cur.includes(markId) : false;
+        $patchStyleText(selection, { [MARKS_STYLE_PROP]: marksStyleValue(change(cur, allHave)) });
+        return;
+      }
+      const allHave = markId ? nodes.every((n) => marksFromStyle(n.getStyle()).includes(markId)) : false;
+      $patchStyleText(selection, {
+        [MARKS_STYLE_PROP]: (cur: string | null) => marksStyleValue(change(parseMarks(cur), allHave)) ?? NO_MARKS,
+      });
+      // Nodes left with no marks: drop the property, so they can merge with their neighbours again.
+      const after = $getSelection();
+      if (!$isRangeSelection(after)) return;
+      for (const n of after.getNodes().filter($isTextNode)) {
+        const style = n.getStyle();
+        if (style.includes(`${MARKS_STYLE_PROP}: ${NO_MARKS}`))
+          n.setStyle(style.replace(new RegExp(`\\s*${MARKS_STYLE_PROP}:\\s*${NO_MARKS};?`), ""));
+      }
+    });
+    editor.focus();
+  };
+  const toggleMark = (markId: string) =>
+    updateMarks((ids, allHave) => (allHave ? ids.filter((x) => x !== markId) : cleanMarks([...ids, markId])), markId);
+  const clearMarks = () => updateMarks(() => []);
+
+  // The font control shows a preset's name when the text is exactly in one.
+  const currentStyleId =
+    fontId === MIXED_FONT
+      ? null
+      : (uniformMarks && presetFor(fontId, bold === "on", italic === "on", uniformMarks)) || fontId;
 
   const toggleBullet = () => {
     editor.dispatchCommand(
@@ -290,22 +396,30 @@ export function ToolbarPlugin({
       >
         {I.italic}
       </button>
+      <MarksMenu
+        state={markState}
+        fontId={fontId === MIXED_FONT ? null : fontId}
+        bold={bold === "on"}
+        italic={italic === "on"}
+        onToggle={toggleMark}
+        onClear={clearMarks}
+      />
       <div className="sep" />
 
       <FontMenu
-        fontId={fontId === MIXED_FONT ? null : fontId}
+        fontId={currentStyleId}
         recent={recent}
-        onPick={applyFont}
+        onPick={applyStyle}
         onMore={openFontPanel}
       />
       <FontPanel
         open={fontPanelOpen}
-        fontId={fontId === MIXED_FONT ? null : fontId}
+        fontId={currentStyleId}
         sample={panelSample}
         recent={recent}
         onPick={(id) => {
           setFontPanelOpen(false);
-          applyFont(id);
+          applyStyle(id);
         }}
         onClose={closeFontPanel}
       />

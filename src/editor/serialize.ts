@@ -19,7 +19,7 @@ import {
   type LexicalNode,
 } from "lexical";
 import { $isListNode, $isListItemNode, type ListNode } from "@lexical/list";
-import { fontIdFromStyle } from "./fontStyle";
+import { fontIdFromStyle, marksFromStyle } from "./fontStyle";
 import { $isMarkedListNode, DEFAULT_BULLET } from "./nodes/MarkedListNode";
 import { $isDividerNode } from "./nodes/DividerNode";
 import { transformRun } from "../fonts/transform";
@@ -58,6 +58,7 @@ function nodeToString(node: LexicalNode): string {
       fontId: fontIdFromStyle(node.getStyle()),
       bold: node.hasFormat("bold"),
       italic: node.hasFormat("italic"),
+      marks: marksFromStyle(node.getStyle()),
     });
   }
   if ($isListNode(node)) return listToString(node, 0);

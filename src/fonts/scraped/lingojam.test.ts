@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LINGOJAM_FONTS } from "./lingojam";
-import { BASE_FONTS, FONTS, supportsBold, supportsItalic } from "../mappings";
+import { BASE_FONTS, FONTS, SCRAPED_FONTS, supportsBold, supportsItalic } from "../mappings";
 import { transformRun } from "../transform";
 import { ALL_UI_FONTS, FONT_STYLES, QUICK_FONTS, filterFonts, fontLabel, menuRecentFonts, renderSample } from "../uiFonts";
 import { isKnownFont } from "../../editor/fontStyle";
@@ -12,7 +12,8 @@ describe("scraped LingoJam fonts", () => {
   it("are registered after the base fonts, with unique ids", () => {
     const ids = FONTS.map((f) => f.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(FONTS.length).toBe(BASE_FONTS.length + LINGOJAM_FONTS.length);
+    // every site's fonts, plus Small Caps (built from LingoJam's "tiny")
+    expect(FONTS.length).toBe(BASE_FONTS.length + SCRAPED_FONTS.length + 1);
     expect(LINGOJAM_FONTS.length).toBeGreaterThan(0);
   });
 
@@ -33,9 +34,10 @@ describe("scraped LingoJam fonts", () => {
 
   it("are known to the editor and the font picker", () => {
     expect(ALL_UI_FONTS.map((f) => f.id)).toEqual(FONTS.map((f) => f.id));
-    for (const f of LINGOJAM_FONTS) {
+    for (const f of SCRAPED_FONTS) {
       expect(isKnownFont(f.id)).toBe(true);
-      expect(fontLabel(f.id)).toBe(f.label);
+      // the site's name, except where the panel has a clearer one
+      expect(fontLabel(f.id)).toBe(f.id === "tiny" ? "All Small Caps" : f.label);
     }
   });
 
@@ -74,7 +76,7 @@ describe("scraped LingoJam fonts", () => {
     expect(renderSample("currency", "Hi", true, true)).toBe(renderSample("currency", "Hi"));
   });
 
-  for (const font of LINGOJAM_FONTS) {
+  for (const font of SCRAPED_FONTS) {
     it(`${font.id}: only A-Z a-z 0-9 keys, real non-empty values, and it changes something`, () => {
       const keys = Object.keys(font.map);
       expect(keys.length).toBeGreaterThan(0);

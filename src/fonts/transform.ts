@@ -10,23 +10,33 @@
  * (punctuation, accents, non-Latin) fall through unchanged, per the spec.
  */
 import { resolveVariantMap } from "./mappings";
+import { graphemes, markById } from "./marks";
 
 export type StyledRun = {
   text: string;
   fontId: string;
   bold: boolean;
   italic: boolean;
+  /** Mark ids (marks.ts), added after every character but spaces, in this order. */
+  marks?: readonly string[];
 };
 
 /** Substitute a single run of uniformly-styled text. */
 export function transformRun(run: StyledRun): string {
   const map = resolveVariantMap(run.fontId, run.bold, run.italic);
-  if (!map) return run.text; // identity variant: pass through untouched
+  const sub = (s: string) => {
+    if (!map) return s; // identity variant: pass through untouched
+    let out = "";
+    for (const ch of s) out += map.get(ch) ?? ch; // fallback: leave unmapped codepoints as-is
+    return out;
+  };
+  const marks = (run.marks ?? []).map((id) => markById(id)?.char ?? "").join("");
+  if (!marks) return sub(run.text);
 
+  // Marks go on each character as seen (so an emoji or an accented letter gets one
+  // set, not one per code point), after its substitute; whitespace gets none.
   let out = "";
-  for (const ch of run.text) {
-    out += map.get(ch) ?? ch; // fallback: leave unmapped codepoints as-is
-  }
+  for (const g of graphemes(run.text)) out += /^\s+$/u.test(g) ? g : sub(g) + marks;
   return out;
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ALL_UI_FONTS,
+  PANEL_FONTS,
   DEFAULT_SAMPLE,
   FONT_FEATURES,
   FONT_STYLES,
@@ -86,7 +86,7 @@ export function FontPanel({
 
   if (!render) return null;
 
-  const fonts = filterFonts(ALL_UI_FONTS, { ...filter, recent });
+  const fonts = filterFonts(PANEL_FONTS, { ...filter, recent });
   const text = sample?.text || DEFAULT_SAMPLE;
 
   return createPortal(

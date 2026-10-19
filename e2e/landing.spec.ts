@@ -196,9 +196,9 @@ test("the facts row counts up to its numbers when it comes into view", async ({ 
         setTimeout(() => (clearInterval(iv), resolve(v)), 2400);
       }),
   );
-  expect(Math.min(...seen)).toBeLessThan(42);
-  expect(seen[seen.length - 1]).toBe(42);
-  await expect(page.locator(".facts b")).toHaveText(["42", "7", "0", "100%"]);
+  expect(Math.min(...seen)).toBeLessThan(327);
+  expect(seen[seen.length - 1]).toBe(327);
+  await expect(page.locator(".facts b")).toHaveText(["327", "7", "0", "100%"]);
   expect(await first.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(52);
 });
 

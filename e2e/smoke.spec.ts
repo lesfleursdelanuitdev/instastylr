@@ -218,7 +218,7 @@ test("font panel: slides in from More fonts, filters by style, closes", async ({
   await panel.locator('[data-style="script"]').click();
   await expect(rows).toHaveCount(1);
   await panel.locator('[data-style="boxed"]').click();
-  await expect(rows).toHaveCount(6);
+  await expect(rows).toHaveCount(65); // 6 from LingoJam and the engine, 59 from Picsart and Glyphy
   await panel.locator('[data-filter="bold"]').click();
   await expect(rows).toHaveCount(0);
   await panel.locator(".font-empty-reset").click();

@@ -8,7 +8,7 @@ import { BULLET_CATEGORY_FILTERS, BULLET_PRESETS } from "../editor/bullet/preset
 import { BULLET_CATEGORY_LABELS, bulletPresetMarker } from "../editor/bullet/types";
 import { DIVIDER_PRESETS } from "../editor/divider/presets";
 import { DIVIDER_CATEGORY_LABELS, type DividerCategory } from "../editor/divider/types";
-import { ALL_UI_FONTS, DEFAULT_SAMPLE, FONT_STYLES, renderSample, type FontStyle, type UiFont } from "../fonts/uiFonts";
+import { PANEL_FONTS, DEFAULT_SAMPLE, FONT_STYLES, renderSample, type FontStyle, type UiFont } from "../fonts/uiFonts";
 
 const SITE = "https://instastylr.lesfleursdelanuit.com";
 
@@ -146,9 +146,9 @@ function fontRows(font: UiFont): string {
 }
 
 function fontsPage(): GeneratedPage {
-  const count = ALL_UI_FONTS.length;
+  const count = PANEL_FONTS.length;
   const groups = FONT_STYLES.map((s) => {
-    const fonts = ALL_UI_FONTS.filter((f) => f.style === s.id);
+    const fonts = PANEL_FONTS.filter((f) => f.style === s.id);
     return `      <section class="step ref-group" id="${s.id}">
         <div>
           <h2>${esc(s.label)} <small class="ref-count">${fonts.length}</small></h2>

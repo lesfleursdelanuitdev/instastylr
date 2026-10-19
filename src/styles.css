@@ -458,6 +458,42 @@ body {
 #btn-more-fonts { color: #C7D2FE; font-weight: 600; }
 #btn-more-fonts .font-option-check { color: #94A3B8; }
 
+/* Marks control: a line through, under, over or around each letter */
+#marks-menu-wrap { position: relative; display: flex; }
+#btn-marks { gap: 4px; }
+#btn-marks > svg { color: inherit; opacity: 0.7; }
+.marks-btn-glyph { font-size: 15px; line-height: 14px; min-width: 14px; text-align: center; }
+#marks-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+  width: min(320px, calc(100vw - 16px));
+  background: var(--out-hdr-bg); border: 1px solid var(--sep-clr);
+  border-radius: 10px; box-shadow: var(--shadow-pop); padding: 8px;
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: calc(100dvh - 140px); overflow-y: auto; overscroll-behavior: contain;
+  animation: popIn 0.14s ease-out both;
+}
+#marks-menu .font-menu-heading { padding: 0 2px 4px; }
+.marks-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.mark-option {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  min-height: 36px; padding: 0 8px;
+  background: none; border: 1px solid var(--sep-clr); border-radius: 7px;
+  color: #E2E8F0; font-size: 13px; font-family: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: background 0.1s, border-color 0.1s;
+}
+.mark-option:hover:not(:disabled), .mark-option:focus-visible { background: var(--tbtn-hover); }
+.mark-option.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mark-option.mixed { border-color: var(--accent-soft); border-style: dashed; }
+.mark-option:disabled { opacity: 0.4; cursor: default; }
+.mark-preview { flex-shrink: 0; width: 2.4em; font-size: 15px; color: #C7D2FE; white-space: nowrap; }
+.mark-option.on .mark-preview { color: #fff; }
+.mark-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.marks-foot { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--sep-clr); padding-top: 8px; }
+.marks-note { margin: 0; padding: 0 2px; font-size: 12px; line-height: 1.45; color: #94A3B8; }
+#btn-marks-clear { color: #C7D2FE; font-weight: 600; padding: 0 8px; }
+#btn-marks-clear:disabled { opacity: 0.4; cursor: default; }
+
 /* ── Font panel (off-canvas, slides in from the left) ── */
 #font-panel {
   position: fixed; top: 0; left: 0; bottom: 0;
@@ -1355,6 +1391,12 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
   #font-select { flex: 1; min-width: 0; }
   /* the button sits mid-bar on phones: hang the menu from its right edge */
   #font-menu { left: auto; right: 0; min-width: 210px; }
+  /* Marks: hang from the toolbar (the positioned parent) across the screen */
+  #marks-menu-wrap { position: static; }
+  /* room for the font name: no chevron on Marks, no "Aa" in the font button */
+  #btn-marks > svg { display: none; }
+  #font-select .font-preview { display: none; }
+  #marks-menu { left: 8px; right: 8px; width: auto; }
   #more-menu { padding: 6px; gap: 4px; }
   .sep { margin: 0 2px; }
   /* Emoji picker hangs off the More menu (not its own button) so it can use the
@@ -1407,6 +1449,7 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
 
   #font-select { height: 44px; font-size: 15px; gap: 6px; padding: 0 7px 0 9px; }
   .font-option { min-height: 44px; font-size: 15px; }
+  .mark-option { min-height: 44px; font-size: 14px; }
   .font-filter { min-height: 36px; padding: 0 14px; font-size: 13px; }
   .font-row { min-height: 64px; }
   #save-name-input, .settings-select { min-height: 44px; font-size: 16px; }
@@ -1491,4 +1534,12 @@ html.col-layout #output-panel { transition: width 0.2s ease; }
     transition-duration: 0.01ms !important;
     transition-delay: 0s !important;
   }
+}
+
+/* The smallest phones: no room for the font's name, so the button shows "Aa" in
+   the font instead (the name is in its menu and in the status bar). */
+@media (max-width: 340px) {
+  #toolbar .sep { display: none; }
+  #font-select .font-preview { display: inline; }
+  #font-select .font-select-label { display: none; }
 }
